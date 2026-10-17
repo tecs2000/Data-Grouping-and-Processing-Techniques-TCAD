@@ -1,0 +1,271 @@
+---
+title: "Estudo da Base de Dados *Stellar Classification - SDSS17*"
+author: "Fernando Ferreira e Thayná Santos"
+date: "`r Sys.Date()`" 
+output:
+  html_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+\
+
+## 1. Introdução
+
+  O presente trabalho tem como objetivo realizar uma análise exploratória do *Stellar Classification Dataset – SDSS17*, bem como proceder ao pré-processamento dos dados e à análise estatística das variáveis, com vista à posterior construção de um modelo preditivo. Para esse efeito, será aplicada a regressão logística, uma técnica estatística utilizada para modelar a probabilidade de ocorrência de um determinado resultado em função de um conjunto de variáveis explicativas. Embora a regressão logística binária seja adequada para variáveis de resposta dicotómicas, a sua aplicação a problemas com mais de duas categorias requer uma abordagem de regressão logística multinomial ou a adaptação do problema a uma classificação binária.
+
+  O dataset em estudo contém 100 000 observações e 17 variáveis explicativas, que incluem características fotométricas, coordenadas astronómicas e outras informações relativas aos objetos observados. Com base nestas características, pretende-se classificar os objetos astronómicos em três categorias distintas: estrelas (*stars*), galáxias (*galaxies*) e quasares (*quasars*). A análise destas variáveis permitirá compreender melhor os dados e identificar as características potencialmente relevantes para a capacidade preditiva do modelo.
+
+  Uma vez que o objetivo deste trabalho passa pela aplicação da regressão logística binária, será necessário selecionar duas das três classes existentes, transformando o problema original numa tarefa de classificação binária. Esta seleção será acompanhada por procedimentos de pré-processamento e limpeza dos dados, de modo a garantir a sua qualidade e adequação à modelação. Por fim, o desempenho do modelo será avaliado com base em métricas apropriadas, permitindo analisar a sua capacidade de classificação e a qualidade das previsões obtidas.
+
+\
+
+## 2. Descrição da Base de Dados
+
+  A classificação estelar é uma área fundamental da astronomia, permitindo identificar e distinguir diferentes objetos celestes com base nas suas características espectrais. O *Stellar Classification Dataset - SDSS17* baseia-se em dados recolhidos pelo *Sloan Digital Sky Survey* (SDSS), tendo como objetivo classificar objetos astronómicos em três categorias: estrelas (*stars*), galáxias (*galaxies*) e quasares (*quasars*). 
+
+  O dataset contém **100 000 observações e 18 variáveis**, das quais 17 correspondem a características dos objetos observados e uma variável de resposta, denominada `class`, que identifica a respetiva categoria. As variáveis são as seguintes:
+
+- **`obj_ID`**: identificador único do objeto no catálogo de imagens astronómicas.
+- **`alpha`**: ascensão reta do objeto, correspondente à coordenada astronómica que permite determinar a sua posição no céu, no referencial J2000.
+- **`delta`**: declinação do objeto, correspondente à coordenada astronómica que indica a sua posição angular relativamente ao equador celeste, no referencial J2000.
+- **`u`**: magnitude fotométrica medida através do filtro ultravioleta.
+- **`g`**: magnitude fotométrica medida através do filtro verde.
+- **`r`**: magnitude fotométrica medida através do filtro vermelho.
+- **`i`**: magnitude fotométrica medida através do filtro do infravermelho próximo.
+- **`z`**: magnitude fotométrica medida através do filtro infravermelho.
+- **`run_ID`**: identificador da execução de observação (*run*), utilizado para identificar uma digitalização específica do levantamento astronómico.
+- **`rerun_ID`**: identificador do reprocessamento das imagens, permitindo distinguir diferentes processamentos dos dados recolhidos.
+- **`cam_col`**: número da coluna da câmara, utilizado para identificar a linha de digitalização dentro de uma execução de observação.
+- **`field_ID`**: identificador do campo de observação, utilizado para distinguir as diferentes regiões observadas.
+- **`spec_obj_ID`**: identificador único dos objetos observados por espectroscopia ótica. Observações com o mesmo identificador partilham a mesma classificação.
+- **`class` (variável resposta)**: categoria do objeto astronómico observado, podendo assumir três valores: estrela (*STAR*), galáxia (*GALAXY*) ou quasar (*QSO*).
+- **`redshift`**: desvio para o vermelho, que quantifica o aumento do comprimento de onda da luz recebida relativamente ao seu valor original, sendo relevante para o estudo do movimento e da distância cosmológica dos objetos.
+- **`plate`**: identificador da placa utilizada no SDSS para a recolha dos dados espectroscópicos.
+- **`MJD`**: *Modified Julian Date*, variável que indica a data em que os dados foram recolhidos, expressa numa escala de tempo astronómica.
+- **`fiber_ID`**: identificador da fibra ótica utilizada para captar a luz do objeto observado no plano focal do instrumento.
+
+
+\
+
+A base de dados é assim representada:
+
+```{r, include=FALSE}
+
+setwd("~/Documents/Mestrado/TCAD/st_delivery/Data-Grouping-and-Processing-Techniques-TCAD")
+library(readr)
+data <- read_csv("star_classification.csv")
+View(data)
+
+```
+
+```{r, echo=FALSE, warning = FALSE}
+
+library(DT)
+datatable(data)
+
+```
+
+
+\
+
+## 3. Tratamento de Dados
+
+### 3.1. Tratamento da variável de resposta
+
+  A variável `class` foi identificada como a variável categórica de resposta, uma vez que permite classificar os objetos astronómicos em três categorias distintas: estrela (STAR), galáxia (GALAXY) ou quasar (QSO). Através da função str(), verificou-se que esta variável se encontrava armazenada como texto (character). Assim, procedeu-se à sua conversão para fator (factor), de modo a representar explicitamente a sua natureza categórica e facilitar a realização das análises estatísticas subsequentes.
+  
+
+```{r echo=TRUE, warning=FALSE}
+str(data$class)                     # a variavel class não é um fator, então devemos convertê-la
+summary(data$class)
+
+data$class <- as.factor(data$class)
+summary(data$class)
+```
+
+  Com o objetivo de aplicar um modelo de regressão logística binária, optou-se por restringir a análise às classes STAR (estrelas) e GALAXY (galáxias), excluindo as observações pertencentes à classe QSO (quasares) de menor frequência. Esta decisão permite formular o problema de classificação como uma distinção entre duas categorias. Após a remoção das observações da classe QSO, eliminaram-se também os níveis do fator que deixaram de estar representados na base de dados, garantindo que a variável de resposta contém apenas as duas classes consideradas na análise.
+  
+```{r echo=TRUE, warning=FALSE}
+
+data <- subset(data, class != "QSO") # Remover todas as observações da classe QSO
+data$class <- droplevels(data$class) # Remover os níveis do fator que já não têm observações
+
+summary(data$class)
+levels(data$class)
+```
+
+### 3.2. Tratamento dos identificadores dos objetos
+
+  Foram identificadas duas variáveis com funções essencialmente identificadoras: `obj_ID`, que identifica o objeto no catálogo de imagens, e `spec_obj_ID`, que identifica os objetos observados por espectroscopia ótica. Embora sejam representadas numericamente, estas variáveis não correspondem a propriedades físicas dos objetos astronómicos. A sua utilização direta como variáveis explicativas poderia levar o modelo a aprender associações artificiais (vieses) entre os identificadores e a classe dos objetos, sem garantir capacidade de generalização para novas observações. Assim, optou-se por excluí-las do conjunto de variáveis preditoras.
+  
+```{r echo=TRUE, warning=FALSE}
+data$obj_ID <- NULL
+data$spec_obj_ID <- NULL
+```
+
+  Variáveis como `run_ID`, que identifica a execução de uma observação, e `rerun_ID` precisam de uma observação mais detalhada quanto às suas distribuições numéricas.
+  
+```{r echo=TRUE, warning=FALSE}
+
+data$rerun_ID <- factor(data$rerun_ID)
+summary(data$rerun_ID)
+```
+
+  Como todas as observações têm `rerun_ID = 301`, não existe qualquer diferença nesta variável entre estrelas, galáxias e quasares que o modelo possa utilizar para as distinguir. Por conseguinte, é justificável excluir `rerun_ID` do conjunto de variáveis explicativas, uma vez que não apresenta variabilidade nos dados.
+
+```{r echo=TRUE, warning=FALSE}
+
+data$rerun_ID <- NULL
+
+```
+
+Já para a variável `run_ID`, temos
+
+```{r echo=TRUE, warning=FALSE}
+data$run_ID <- factor(data$run_ID)
+summary(data$run_ID)
+```
+
+  Com isso, percebemos a existência de múltiplos identificadores, com frequências distintas, indicando que as observações não se encontram uniformemente distribuídas pelas execuções. Contudo, esta distribuição, por si só, não permite determinar a relevância da variável para a classificação dos objetos astronómicos.
+  
+  Uma vez que `run_ID` identifica a execução em que os dados foram recolhidos, e não uma característica física intrínseca dos objetos, optou-se por não a incluir no modelo preditivo inicial.
+
+```{r echo=TRUE, warning=FALSE}
+
+data$run_ID <- NULL
+
+```
+
+### 3.3. Tratamento das restantes variáveis relacionadas com a aquisição
+
+  Por fim, foram analisadas outras variáveis relacionadas com o processo de aquisição dos dados, nomeadamente `cam_col`, `field_ID`, `fiber_ID`, `plate`, e `MJD`. Estas variáveis identificam elementos da localização, da organização instrumental ou da recolha das observações, não correspondendo diretamente a propriedades físicas intrínsecas dos objetos astronómicos. Assim, optou-se por excluí-las do modelo preditivo inicial, privilegiando as variáveis que caracterizam as propriedades astronómicas dos objetos.
+  
+```{r echo=TRUE, warning=FALSE}
+
+data$MJD <- NULL
+data$plate <- NULL
+data$cam_col <- NULL
+data$field_ID <- NULL
+data$fiber_ID <- NULL
+
+```
+
+### 3.4 Verificação da existência de valores em falta
+
+  Um dos principais tópicos a abordar no tratamento de base de dados consiste no tratamento de valores em falta. Assim, precisamos observar a existência desses valores na base de dados sendo trabalhada, a fim de identificar a necessidade da aplicação de técnicas adicionais no tratamento desses dados.
+
+```{r, echo=TRUE, warning = FALSE, message=FALSE}
+
+sapply(data, function(x) sum(is.na(x)))
+
+```
+
+A partir da função acima, atestamos a inexistência de valores faltantes, não sendo necessária, assim, a aplicação de tratamentos adicionais à base de dados.
+
+\
+
+## 4. Análise Exploratória Gráfica
+
+Deste modo, é possível observar o comportamento das variáveis através de algumas estatísticas descritivas:
+
+```{r, echo=FALSE, warning = FALSE, message=FALSE}
+
+library("knitr")
+kable(summary(data))
+
+```
+
+### 4.1 Gráficos
+
+#### Variável Categórica - `class`:
+  
+```{r, echo=FALSE, warning = FALSE, message=FALSE}
+
+library(gridExtra)
+library(ggplot2)
+
+# Gráfico de Barras - Variável Categórica
+
+a = ggplot(data) + 
+  geom_bar(aes(x = class), color="black" ,fill="lightblue") +
+  labs(
+    title = "Distribuição das classes astronómicas",
+    x = "Classe",
+    y = "Número de observações"
+  ) +
+  theme_minimal()
+ 
+grid.arrange(a)
+
+```
+
+#### Variáveis Numéricas - `alpha`, `delta`, `u`, `g`, `r`, `i`, `z`, `redshift`:
+
+```{r, echo=FALSE, warning = FALSE, message=FALSE}
+
+
+b = ggplot(data, aes(x=u)) + 
+  geom_histogram(bins=15, color="black", fill="lightblue") +
+    ggtitle("Filtro Ultravioleta (u)") + theme(plot.title = element_text(size=8), axis.title.x=element_blank())
+
+c = ggplot(data, aes(x=g)) + 
+  geom_histogram(bins=15, color="black", fill="lightblue") +
+    ggtitle("Filtro Verde (v)") + theme(plot.title = element_text(size=8), axis.title.x=element_blank())
+
+d = ggplot(data, aes(x=r)) + 
+  geom_histogram(bins=15, color="black", fill="lightblue") +
+    ggtitle("Filtro Vermelho (r)") + theme(plot.title = element_text(size=8), axis.title.x=element_blank())
+
+e = ggplot(data, aes(x=i)) + 
+  geom_histogram(bins=15, color="black", fill="lightblue") +
+    ggtitle("Filtro do Infravermelho Próximo (i)") + theme(plot.title = element_text(size=8), axis.title.x=element_blank())
+
+f = ggplot(data, aes(x=z)) + 
+  geom_histogram(bins=15, color="black", fill="lightblue") +
+    ggtitle("Filtro Infravermelho (z)") + theme(plot.title = element_text(size=8), axis.title.x=element_blank())
+
+g = ggplot(data, aes(x=redshift)) + 
+  geom_histogram(bins=15, color="black", fill="lightblue") +
+    ggtitle("Redshift") + theme(plot.title = element_text(size=8), axis.title.x=element_blank())
+
+grid.arrange(b, c, d, e, f, g, ncol=3, nrow=2)
+
+```
+
+#### Boxplots
+
+```{r, echo=FALSE, warning = FALSE, message=FALSE}
+library(ggplot2)
+
+criar_boxplot <- function(variavel, titulo, eixo_y) {
+  ggplot(data, aes(x = class, y = .data[[variavel]], fill = class)) +
+    geom_boxplot() +
+    labs(
+      title = titulo,
+      x = "Classe astronómica",
+      y = eixo_y
+    ) +
+    theme_minimal() +
+    guides(fill = "none")
+}
+
+criar_boxplot("u", "Distribuição de u por classe", "Magnitude u")
+criar_boxplot("g", "Distribuição de g por classe", "Magnitude g")
+criar_boxplot("r", "Distribuição de r por classe", "Magnitude r")
+criar_boxplot("i", "Distribuição de i por classe", "Magnitude i")
+criar_boxplot("z", "Distribuição de z por classe", "Magnitude z")
+criar_boxplot("redshift", "Distribuição de redshift por classe", "Magnitude Redshift")
+
+```
+
+---
+
+<!-- Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed. -->
