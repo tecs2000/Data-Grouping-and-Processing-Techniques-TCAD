@@ -55,7 +55,7 @@ A base de dados é assim representada:
 
 ```{r, include=FALSE}
 
-#setwd("~/Documents/Mestrado/TCAD/st_delivery/Data-Grouping-and-Processing-Techniques-TCAD")
+setwd("~/Documents/Mestrado/TCAD/st_delivery/Data-Grouping-and-Processing-Techniques-TCAD")
 library(readr)
 data <- read_csv("star_classification.csv")
 View(data)
@@ -115,7 +115,7 @@ data$rerun_ID <- factor(data$rerun_ID)
 summary(data$rerun_ID)
 ```
 
-  Como todas as observações têm `rerun_ID = 301`, não existe qualquer diferença nesta variável entre estrelas, galáxias e quasares que o modelo possa utilizar para as distinguir. Por conseguinte, é justificável excluir `rerun_ID` do conjunto de variáveis explicativas, uma vez que não apresenta variabilidade nos dados.
+  Como todas as observações têm `rerun_ID = 301`, não existe qualquer diferença nesta variável entre estrelas e galáxias que o modelo possa utilizar para as distinguir. Por conseguinte, é justificável excluir `rerun_ID` do conjunto de variáveis explicativas, uma vez que não apresenta variabilidade nos dados.
 
 ```{r echo=TRUE, warning=FALSE}
 
@@ -164,7 +164,7 @@ sapply(data, function(x) sum(is.na(x)))
 
 ```
 
-A partir da função acima, atestamos a inexistência de valores faltantes, não sendo necessária, assim, a aplicação de tratamentos adicionais à base de dados.
+  A partir da função acima, atestamos a inexistência de valores em falta explícitos (NA). A verificação de valores implícitos ou fisicamente inconsistentes será feita na análise exploratória (Secção 4).
 
 \
 
@@ -179,9 +179,36 @@ kable(summary(data))
 
 ```
 
-### 4.1 Gráficos
+  A análise das estatísticas descritivas revela uma inconsistência nas variáveis `u`, `g` e `z`: o valor mínimo observado é -9999, fisicamente impossível para uma magnitude fotométrica, cujos valores típicos se situam entre 10 e 30. Trata-se de um código sentinela utilizado pelo SDSS para indicar ausência de medição, ou seja, um valor em falta codificado numericamente, que a função `is.na()` não consegue detetar. Antes de prosseguir com a análise gráfica, é necessário tratar estes registos, uma vez que distorcem a escala dos gráficos e as medidas de resumo.
 
-#### Variável Categórica - `class`:
+### 4.1 Tratamento de valores sentinela e outliers
+
+Verificaremos primeiro quantas observações são afetadas:
+
+```{r echo=FALSE, warning=FALSE}
+
+vars_num <- c("alpha", "delta", "u", "g", "r", "i", "z", "redshift")  # variaveis numericas
+
+colSums(data[vars_num] == -9999)                                      # apenas uma ocorrência nas variáveis u, g, e z
+
+data[data$u == -9999 | data$g == -9999 | data$z == -9999, ]           # exibe a ocorrencia
+```
+
+  Dado o número muito reduzido de observações afetadas face ao total, optou-se pela sua remoção, uma vez que a imputação seria difícil de justificar (a magnitude num filtro não se infere de forma fiável a partir de um único registo) e a eliminação não compromete a representatividade da amostra.
+  
+```{r echo=TRUE, warning=FALSE}
+
+data[vars_num] <- lapply(data[vars_num], function(x) replace(x, x == -9999, NA))
+data <- na.omit(data)
+nrow(data)
+summary(data[vars_num])
+
+```
+
+Após a remoção, o `summary()` confirma que as variáveis passaram a apresentar intervalos fisicamente plausíveis.
+  
+  
+### 4.2 Variável Categórica - `class`:
   
 ```{r, echo=FALSE, warning = FALSE, message=FALSE}
 
@@ -203,7 +230,7 @@ grid.arrange(a)
 
 ```
 
-#### Variáveis Numéricas - `alpha`, `delta`, `u`, `g`, `r`, `i`, `z`, `redshift`:
+### 4.3 Variáveis Numéricas - `alpha`, `delta`, `u`, `g`, `r`, `i`, `z`, `redshift`:
 
 ```{r, echo=FALSE, warning = FALSE, message=FALSE}
 
@@ -214,7 +241,7 @@ b = ggplot(data, aes(x=u)) +
 
 c = ggplot(data, aes(x=g)) + 
   geom_histogram(bins=15, color="black", fill="lightblue") +
-    ggtitle("Filtro Verde (v)") + theme(plot.title = element_text(size=8), axis.title.x=element_blank())
+    ggtitle("Filtro Verde (g)") + theme(plot.title = element_text(size=8), axis.title.x=element_blank())
 
 d = ggplot(data, aes(x=r)) + 
   geom_histogram(bins=15, color="black", fill="lightblue") +
@@ -232,20 +259,26 @@ g = ggplot(data, aes(x=redshift)) +
   geom_histogram(bins=15, color="black", fill="lightblue") +
     ggtitle("Redshift") + theme(plot.title = element_text(size=8), axis.title.x=element_blank())
 
-grid.arrange(b, c, d, e, f, g, ncol=3, nrow=2)
+h = ggplot(data, aes(x=alpha)) + 
+  geom_histogram(bins=15, color="black", fill="lightblue") +
+    ggtitle("Coordenada Alpha") + theme(plot.title = element_text(size=8), axis.title.x=element_blank())
+
+i = ggplot(data, aes(x=delta)) + 
+  geom_histogram(bins=15, color="black", fill="lightblue") +
+    ggtitle("Coodernada Delta") + theme(plot.title = element_text(size=8), axis.title.x=element_blank())
+
+grid.arrange(b, c, d, e, f, g, h, i, ncol=4, nrow=2)
 
 ```
 
-#### Boxplots
+### 4.4 Boxplots
 
 ```{r, echo=FALSE, warning = FALSE, message=FALSE}
-library(ggplot2)
 
-criar_boxplot <- function(variavel, titulo, eixo_y) {
+criar_boxplot <- function(variavel, eixo_y) {
   ggplot(data, aes(x = class, y = .data[[variavel]], fill = class)) +
     geom_boxplot() +
     labs(
-      title = titulo,
       x = "Classe astronómica",
       y = eixo_y
     ) +
@@ -253,18 +286,144 @@ criar_boxplot <- function(variavel, titulo, eixo_y) {
     guides(fill = "none")
 }
 
-criar_boxplot("u", "Distribuição de u por classe", "Magnitude u")
-criar_boxplot("g", "Distribuição de g por classe", "Magnitude g")
-criar_boxplot("r", "Distribuição de r por classe", "Magnitude r")
-criar_boxplot("i", "Distribuição de i por classe", "Magnitude i")
-criar_boxplot("z", "Distribuição de z por classe", "Magnitude z")
-criar_boxplot("redshift", "Distribuição de redshift por classe", "Magnitude Redshift")
+criar_boxplot("u", "Magnitude u")
+criar_boxplot("g", "Magnitude g")
+criar_boxplot("r", "Magnitude r")
+criar_boxplot("i", "Magnitude i")
+criar_boxplot("z", "Magnitude z")
+criar_boxplot("alpha", "Magnitude alpha")
+criar_boxplot("delta", "Magnitude delta")
+criar_boxplot("redshift", "Magnitude Redshift")
 
 ```
----
 
 
-## 5 - Criação dos Modelos
+## 5.  Análise Estatística Primária
+
+  Testes da normalidade podem ser visuais, através de qqplot ou da densidade das variáveis, e analíticos, através do teste Kolmogorov-Smirnov e Shapiro-Wilk.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Importando as livrarias necessárias
+library(tidyverse)
+library(ggpubr)
+library(rstatix)
+```
+
+Resumo dos dados:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+summary(data)
+```
+
+### 5.1 Métodos visuais
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library("ggpubr")
+
+# Density plot
+d1<-ggdensity(data$alpha, xlab = "alpha",fill = "lightblue")
+d2<-ggdensity(data$delta, xlab="delta",fill = "lightblue")
+d3<-ggdensity(data$u, xlab="u",fill = "lightblue")
+d4<-ggdensity(data$g,xlab="g", fill = "lightblue")
+d5<-ggdensity(data$r, xlab="r",fill = "lightblue")
+d6<-ggdensity(data$i,xlab="i", fill = "lightblue")
+d7<-ggdensity(data$z, xlab="z",fill = "lightblue")
+d8<-ggdensity(data$redshift, xlab="redshift",fill = "lightblue")
+
+grid.arrange(d1, d2, d3, d4, d5, d6, d7, d8, ncol=4, nrow=2)
+
+# Quantile-quantile (QQ) plot
+q1<-ggqqplot(data$alpha,title = "alpha" )
+q2<-ggqqplot(data$delta, title = "delta")
+q3<-ggqqplot(data$u,title = "u")
+q4<-ggqqplot(data$g,title = "g")
+q5<-ggqqplot(data$r,title = "r")
+q6<-ggqqplot(data$i,title = "i")
+q7<-ggqqplot(data$z,title = "z")
+q8<-ggqqplot(data$redshift,title = "redshift")
+
+grid.arrange(q1, q2, q3, q4, q5, q6, q7, q8, ncol=4, nrow=2)
+
+```
+
+  Os gráficos Q-Q confirmam a ausência de normalidade, pois os pontos se afastam da reta de referência em todas as variáveis. `alpha` e `delta` apresentam formato de "S" com patamares. `r` e `i` acompanham razoavelmente a reta na região central, mas desviam nas caudas, principalmente na superior, indicando caudas mais pesadas que as da normal e presença de valores extremos. O `redshift` se afasta bastante da reta, com acúmulo de pontos em valores próximos de zero e curvatura acentuada, coerente com a forte assimetria à direita. Em `u`, `g` e `z`, um único ponto isolado em -9999 domina a escala do gráfico e achata os demais, evidenciando um outlier (provavelmente erro de registro) que deve ser removido ou tratado como dado faltante.
+
+### 5.2 Testes Analíticos
+
+Dada a quantidade de observações na base de dados, para a realização do teste de Shapiro-Wilk, precisamos selecionar uma amostra aleatória de, no máximo, 5000 observações por variável, devido à limitação da função em R.
+
+```{r  message=FALSE, warning=FALSE}
+
+library(dplyr)
+
+set.seed(123)
+
+normalShap <- data %>%
+  select(where(is.numeric)) %>%
+  summarise(
+    across(
+      everything(),
+      ~ shapiro.test(sample(.x, min(length(.x), 5000)))$p.value,
+      .names = "{.col}_p_value"
+    )
+  )
+
+library(DT)
+datatable(normalShap)
+
+```
+
+Todos os p-valores obtidos são extremamente pequenos, muito inferiores a qualquer nível de significância usual (α = 0,05 ou 0,01). Assim, rejeita-se a hipótese nula de normalidade para todas as variáveis (`alpha`, `delta`, `u`, `g`, `r`, `i`, `z` e `redshift`).
+
+
+### 5.3 Testes comparativos: numérico vs binário
+
+```{r echo=FALSE, warning=FALSE}
+
+lapply(data[, c("alpha", "delta", "u", "g", "r", "i", "z", "redshift")], 
+       function(x) t.test(x ~ data$class))
+
+```
+
+  Após o tratamento dos valores sentinela (-9999), comparamos as médias de estrelas (STAR) e galáxias (GALAXY) usando o teste t de Welch. O resultado foi que as duas classes têm médias diferentes em quase todas as variáveis. A única exceção foi `delta`, que não mostrou diferença (p = 0,93).
+
+  A variável que mais separa as classes é o `redshift`: a média das galáxias é cerca de 0,42, enquanto a das estrelas é praticamente zero. Isso faz sentido, pois as estrelas estão perto de nós e as galáxias estão muito mais distantes.
+
+  Nas magnitudes, as galáxias têm valores maiores que as estrelas, ou seja, são menos brilhantes. A diferença é maior nos filtros `u` (≈ 1,43) e `g` (≈ 1,29), e vai diminuindo em `r` (≈ 0,64), `i` (≈ 0,31) e `z` (≈ 0,11).
+
+  Em alpha, a diferença é pequena (cerca de 3,7°) e provavelmente só reflete a região do céu observada, e não uma característica real dos objetos.
+
+Assim, `redshift`, `u`, `g` e `r` são as variáveis mais promissoras para distinguir galáxias de estrelas no modelo.
+
+
+### 5.2 Testes comparativos: numérico vs numérico
+
+Agora, avaliaremos a associação entre atributos numéricos através da correlação de Pearson e a correlação de Spearman.
+
+```{r echo=TRUE, warning=FALSE}
+# Matriz de correlação entre variáveis quantitativas
+library(corrplot)
+
+# cálculo da matriz de correlação
+
+M <- cor(data[vars_num])
+corrplot(M, method = "circle")
+
+MS<-cor(data[vars_num], method="spearman")
+
+corrplot(MS, method = "circle")
+
+corrplot(M, method = "ellipse", type = "upper")
+
+corrplot(M, method = "number", type = "lower",number.cex = .7, tl.cex = .6)
+
+corrplot.mixed(MS,number.cex = .7,tl.col = "blue", tl.cex = .45)
+```
+
+  A matriz de correlação mostra que as magnitudes `u`, `g`, `r`, `i` e `z` são fortemente correlacionadas entre si (de 0,64 a 0,98), sobretudo entre filtros vizinhos, como i e z (0,98). Já `alpha` e `delta` têm correlações próximas de zero com as demais variáveis, e o `redshift` apresenta correlação moderada com as magnitudes (de 0,44 a 0,67). Como as magnitudes carregam informação muito parecida, incluir todas no modelo de regressão logística pode causar multicolinearidade.
+
+## 6. Criação dos Modelos
+
 Feita a análise, o tratamento e a exploração dos dados podemos agora criar os modelos.
 
 ```{r, warning=FALSE}
@@ -273,6 +432,7 @@ modelo1 = glm(class ~ alpha + delta + u + g + r + i + z + redshift,
               family = binomial(link = logit), 
               data = data)
 
+warnings()
 summary(modelo1)
 
 # Extração dos coeficientes
@@ -288,7 +448,20 @@ OR_all
 # Intervalos de confiança para as Odds Ratios
 exp(confint(modelo1))
 ```
-Foi observado no resultado que a variável redshift apresenta um coeficiente extremo, originando um intervalo de confiança para a *Odds Ratio* de [0, 0] devido a underflow numérico. O facto de o algoritmo ter necessitado de 17 iterações para convergir revela que o redshift está a causar Separação Perfeita. Ou seja, o modelo consegue distinguir as classes com um nível de certeza irrealista apenas com esta variável. Para evitar o enviesamento do algoritmo e avaliar a capacidade preditiva das variáveis fotométricas, optou-se por remover o redshift.
+
+  Foi observado no resultado que a variável redshift apresenta um coeficiente extremo, originando um intervalo de confiança para a *Odds Ratio* de [0, 0] devido a underflow numérico. O facto de o algoritmo ter necessitado de 17 iterações para convergir revela que o redshift está a causar Separação Perfeita. Ou seja, o modelo consegue distinguir as classes com um nível de certeza irrealista apenas com esta variável. Para evitar o enviesamento do algoritmo e avaliar a capacidade preditiva das variáveis fotométricas, optou-se por remover o `redshift`.
+  
+  Além disso, o resultado do modelo reforçou um dado visto na matriz de correlação: `g`, `r`, `i` e `z` são muito correlacionadas (0,83 a 0,98). Isso explica por que `i` e `z` aparecem "não significativas" e porque `g` e `u` têm sinais opostos ao que as diferenças de média sugeriam (as estrelas têm valores menores em `u` e `g`, mas `u` tem coeficiente positivo). Os sinais ficam instáveis e não devem ser interpretados individualmente.
+
+  Teste VIF de Multicolinearidade:
+  
+```{r}
+library(car)
+vif(modelo1)
+```
+
+Vale ressaltar que VIF > 10 indica multicolinearidade severa, destacando que a variável é redundante e pode comprometer o modelo.
+
 
 ```{r, warning=FALSE}
 data$redshift <- NULL
@@ -316,6 +489,7 @@ exp(confint(modelo))
 
 ```
 Os resultados demonstram um bom ajustamento dos dados, evidenciado pela redução da *Null deviance* para a *Residual deviance*. A análise dos coeficientes revela que todos os preditores são estatisticamente significativos, indicando que tanto a posição no céu como as intensidades luminosas são fundamentais na distinção dos objetos. 
+
 O algoritmos convergiu ao fim de 7 iterações, fixando o AIC em 76070.
 
 ### 5.1 - Seleção de variáveis (Método stepwise)
@@ -345,6 +519,7 @@ OR_final <- exp(b_final[-1])
 OR_final
 exp(confint(modelo))
 ```
+
 ### 6 - Avaliação das Medidas de Diagnóstico
 Após a seleção do modelo final, é fundamental avaliar a sua capacidade preditiva através de métricas de diagnóstico. Para isto, extraíram-se as probabilidades previstas pelo modelo para cada observação. Assumindo um ponto de corte estandardizado de 0.5, as observações com probabilidade superior a 50% foram classificadas como *STAR*, enquanto as restantes foram classificadas como *GALAXY*.
 
