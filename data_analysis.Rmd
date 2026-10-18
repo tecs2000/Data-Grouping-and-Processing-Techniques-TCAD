@@ -55,7 +55,7 @@ A base de dados é assim representada:
 
 ```{r, include=FALSE}
 
-setwd("~/Documents/Mestrado/TCAD/st_delivery/Data-Grouping-and-Processing-Techniques-TCAD")
+#setwd("~/Documents/Mestrado/TCAD/st_delivery/Data-Grouping-and-Processing-Techniques-TCAD")
 library(readr)
 data <- read_csv("star_classification.csv")
 View(data)
@@ -261,8 +261,125 @@ criar_boxplot("z", "Distribuição de z por classe", "Magnitude z")
 criar_boxplot("redshift", "Distribuição de redshift por classe", "Magnitude Redshift")
 
 ```
-
 ---
+
+
+## 5 - Criação dos Modelos
+Feita a análise, o tratamento e a exploração dos dados podemos agora criar os modelos.
+
+```{r, warning=FALSE}
+# Construção do Modelo de Regressão Logística
+modelo1 = glm(class ~ alpha + delta + u + g + r + i + z + redshift, 
+              family = binomial(link = logit), 
+              data = data)
+
+summary(modelo1)
+
+# Extração dos coeficientes
+coef(modelo1)
+b = coefficients(modelo1)
+
+# Intervalos de confiança dos coeficientes
+confint(modelo1)
+
+OR_all <- exp(b[-1])
+OR_all
+
+# Intervalos de confiança para as Odds Ratios
+exp(confint(modelo1))
+```
+Foi observado no resultado que a variável redshift apresenta um coeficiente extremo, originando um intervalo de confiança para a *Odds Ratio* de [0, 0] devido a underflow numérico. O facto de o algoritmo ter necessitado de 17 iterações para convergir revela que o redshift está a causar Separação Perfeita. Ou seja, o modelo consegue distinguir as classes com um nível de certeza irrealista apenas com esta variável. Para evitar o enviesamento do algoritmo e avaliar a capacidade preditiva das variáveis fotométricas, optou-se por remover o redshift.
+
+```{r, warning=FALSE}
+data$redshift <- NULL
+
+
+# Construção do Modelo de Regressão Logística
+modelo = glm(class ~ alpha + delta + u + g + r + i + z, 
+              family = binomial(link = logit), 
+              data = data)
+
+summary(modelo)
+
+# Extração dos coeficientes
+coef(modelo)
+b = coefficients(modelo)
+
+# Intervalos de confiança dos coeficientes
+confint(modelo)
+
+OR_all <- exp(b[-1])
+OR_all
+
+# Intervalos de confiança para as Odds Ratios
+exp(confint(modelo))
+
+```
+Os resultados demonstram um bom ajustamento dos dados, evidenciado pela redução da *Null deviance* para a *Residual deviance*. A análise dos coeficientes revela que todos os preditores são estatisticamente significativos, indicando que tanto a posição no céu como as intensidades luminosas são fundamentais na distinção dos objetos. 
+O algoritmos convergiu ao fim de 7 iterações, fixando o AIC em 76070.
+
+### 5.1 - Seleção de variáveis (Método stepwise)
+
+Após a construção do modelo logístico inicial, procedeu-se à seleção das variáveis explicativas mais relevantes para a previsão da classe do objeto celeste. O objetivo desta etapa é obter um modelo que explique a variável dependente da melhor forma possível, utilizando o menor número de preditores, evitando assim o sobreajustamento (*overfitting*).
+
+Para este efeito, utilizou-se o método automático de seleção **Stepwise** (direção *both*), que conjuga as abordagens *Forward* e *Backward*. Este algoritmo avalia iterativamente a adição e remoção de variáveis com base no Critério de Informação de Akaike (AIC). O modelo final selecionado é aquele que apresenta o menor valor de AIC.
+
+```{r selecao_variaveis, echo=TRUE, warning=FALSE}
+
+# Aplicação do método Stepwise (both) para encontrar o melhor modelo
+modelo <- step(modelo, direction = "both", trace = 0)
+
+# Visualização do modelo final escolhido pelo algoritmo
+summary(modelo)
+```
+O facto de o modelo não ter sofrido qualquer alteração explica-se pela elevada relevância estatística de todos os preditores incluídos. Consequentemente, o algoritmo determinou que a remoção de qualquer uma destas variáveis provocaria um aumento do valor do AIC. Assim, o método conclui que o modelo já corresponde à configuração ótima e mais eficiente para a previsão.
+Adicionalmente, podemos extrair as *Odds Ratio* para interpretar o impacto de cada preditor.
+
+```{r, warning=FALSE}
+# Extração dos coeficientes do modelo final
+b_final <- coefficients(modelo)
+
+# Cálculo das Odds Ratios
+OR_final <- exp(b_final[-1])
+
+OR_final
+exp(confint(modelo))
+```
+### 6 - Avaliação das Medidas de Diagnóstico
+Após a seleção do modelo final, é fundamental avaliar a sua capacidade preditiva através de métricas de diagnóstico. Para isto, extraíram-se as probabilidades previstas pelo modelo para cada observação. Assumindo um ponto de corte estandardizado de 0.5, as observações com probabilidade superior a 50% foram classificadas como *STAR*, enquanto as restantes foram classificadas como *GALAXY*.
+
+
+```{r}
+library(caret)
+library(pROC)
+
+probabilidades <- predict(modelo, type = "response")
+
+previsoes <- ifelse(probabilidades > 0.5, "STAR", "GALAXY")
+previsoes <- factor(previsoes, levels = levels(data$class))
+
+matriz_confusao <- confusionMatrix(previsoes, data$class, positive = "STAR")
+print(matriz_confusao)
+
+```
+O confronto entre as previsões do modelo e as classes reais das observações é resumido na Matriz de Confusão. Os resultados revelam uma Exatidão (Accuracy) global de 82.21%, o que indica que o modelo classifica corretamente a grande maioria dos objetos celestes. No entanto, a análise detalhada revela um claro desequilíbrio preditivo: o modelo apresenta uma Especificidade muito elevada de 94.31%, demonstrando uma excelente capacidade de identificar corretamente as Galáxias. Em contrapartida, a Sensibilidade é de apenas 48.89%. Isto significa que, utilizando o limiar de 0.5, o algoritmo falha a deteção de mais de metade das estrelas, classificando-as incorretamente como galáxias.
+
+Embora a Matriz de Confusão forneça uma avaliação detalhada para um ponto de corte específico, a robustez do modelo deve ser avaliada de forma global. Para tal, recorreu-se à Curva ROC (Receiver Operating Characteristic), que ilustra o compromisso entre a Taxa de Verdadeiros Positivos (Sensibilidade) e a Taxa de Falsos Positivos (Especificidade).
+
+```{r}
+curva_roc <- roc(data$class, probabilidades)
+
+plot(curva_roc, 
+     main = "Curva ROC - Modelo de Classificação Estelar", 
+     col = "#2E9FDF", 
+     lwd = 3, 
+     print.auc = TRUE, 
+     legacy.axes = TRUE,
+     print.thres = TRUE)
+```
+Como se pode observar no gráfico, o modelo apresenta uma boa capacidade discriminatória, registando um AUC (Area Under the Curve) de 0.807. Adicionalmente, a análise da curva sugere que o fraco desempenho na Sensibilidade verificado na matriz de confusão pode ser mitigado. O gráfico assinala um ponto ótimo de corte a rondar os 0.389 (em vez do habitual 0.5), o qual permitiria um compromisso muito mais equilibrado entre a sensibilidade e a especificidade na classificação das estrelas e galáxias.
+
+Isto significa que reduzindo o limiar para 0.389 o modelo ficaria muito mais equilibrado, mitigando o facto de existirem muitas mais galáxias do que estrelas.
 
 <!-- Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 
