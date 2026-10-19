@@ -427,10 +427,23 @@ corrplot.mixed(MS,number.cex = .7,tl.col = "blue", tl.cex = .45)
 Feita a análise, o tratamento e a exploração dos dados podemos agora criar os modelos.
 
 ```{r, warning=FALSE}
+
+# dividir os dados entre dados de teste e dados de treino
+set.seed(123)
+library(caret)
+
+indices_treino <- createDataPartition(data$class, p = 0.7, list = FALSE)
+
+train_data <- data[indices_treino, ]
+test_data <- data[-indices_treino, ]
+
+nrow(train_data)
+nrow(test_data)
+
 # Construção do Modelo de Regressão Logística
 modelo1 = glm(class ~ alpha + delta + u + g + r + i + z + redshift, 
               family = binomial(link = logit), 
-              data = data)
+              data = train_data)
 
 warnings()
 summary(modelo1)
@@ -468,7 +481,7 @@ Vale ressaltar que VIF > 10 indica multicolinearidade severa, destacando que a v
 # Construção do Modelo de Regressão Logística - removendo as variaveis i e z
 modelo2 = glm(class ~ redshift + alpha + delta + u + g + r, 
               family = binomial(link = logit), 
-              data = data)
+              data = train_data)
 
 summary(modelo2) # observa-se uma piora negligenciavel no modelo
 
@@ -476,7 +489,7 @@ summary(modelo2) # observa-se uma piora negligenciavel no modelo
 # Construção do Modelo de Regressão Logística - removendo as variaveis i, z, alpha
 modelo3 = glm(class ~ redshift + delta + u + g + r, 
               family = binomial(link = logit), 
-              data = data)
+              data = train_data)
 
 summary(modelo3) # há uma pequena melhora do modelo com relação ao anterior, 
                  # mostrando que as variaveis removidas não agregavam ao modelo preditivo
@@ -487,20 +500,19 @@ vif(modelo3) # menos parametros, menos correlação entre eles, mesma qualidade
 
 data$redshift <- NULL 
 
+## MODELO 4 (antigo final) 
+modelo4 = glm(class ~ alpha + delta + u + g + r + i + z, 
+              family = binomial(link = logit), 
+              data = train_data)
+
+summary(modelo4)
+
 
 # Construção do Modelo de Regressão Logística - removendo as variaveis i, z, alpha, reshift
-modelo4 = glm(class ~ delta + u + g + r, 
+modelo = glm(class ~ delta + u + g + r, 
               family = binomial(link = logit), 
-              data = data)
-summary(modelo4) # modelo fn converge em 5 it e possui qualidade similar ao modelo final, 
-                  # porém com apenas 4 variaveis. qual o melhor?
-
-## MODELO FINAL
-modelo = glm(class ~ alpha + delta + u + g + r + i + z, 
-              family = binomial(link = logit), 
-              data = data)
-
-summary(modelo)
+              data = train_data)
+summary(modelo) # antigo modelo 4 
 
 # Extração dos coeficientes
 coef(modelo)
@@ -516,9 +528,14 @@ OR_all
 exp(confint(modelo))
 
 ```
-Os resultados demonstram um bom ajustamento dos dados, evidenciado pela redução da *Null deviance* para a *Residual deviance*. A análise dos coeficientes revela que todos os preditores são estatisticamente significativos, indicando que tanto a posição no céu como as intensidades luminosas são fundamentais na distinção dos objetos. 
+A construção dos modelos de regressão logística permitiu confirmar o comportamento anómalo do preditor redshift. Nos testes iniciais (Modelos 2 e 3), a presença desta variável resultou num número elevado de iterações do algoritmo (17 Fisher Scoring iterations) e em coeficientes extremos. 
 
-O algoritmos convergiu ao fim de 5 iterações, fixando o AIC em 76070.
+Por conseguinte, a remoção do redshift (Modelo 4) revelou-se indispensável, estabilizando o algoritmo (5 iterações) com um AIC de 53520 e permitindo avaliar o verdadeiro poder preditivo das variáveis fotométricas. 
+Ao construir o Modelo Final apenas com alguns dos filtros fotométricos (`u`, `g` e `r`) verificou-se que todos os preditores são estatisticamente significativos ($p < 0.05$). A estabilidade do modelo é atestada pelas 5 iterações necessárias para a sua convergência e por intervalos de confiança válidos. 
+É importante notar a forte semelhança de resultados entre o Modelo Final (composto apenas por delta, u, g, r) e o Modelo 4 (que inclui adicionalmente alpha, i e z). Ambos os modelos convergem rapidamente e apresentam métricas de ajustamento muito próximas. Como o Modelo Final é mais reduzido este será mantido como base de avaliação.
+
+A análise das **Odds Ratios** (OR) extraídas do modelo final revela que as coordenadas astronómicas (alpha e delta), embora estatisticamente significativas devido à elevada dimensão da amostra, apresentam um impacto prático negligenciável na distinção das classes. Em contraste, as características fotométricas assumem o papel principal na classificação. 
+Destaca-se o filtro verde (g), cujo aumento de uma unidade reduz substancialmente as chances de o objeto pertencer à classe de referência (**OR** $\approx 0.134$), enquanto o aumento no filtro vermelho (r) multiplica essas mesmas chances por aproximadamente 3.45. Esta dinâmica confirma a importância das assinaturas luminosas multiespectrais na correta classificação dos objetos celestes.
 
 ### 6.1 - Seleção de variáveis (Método stepwise)
 
@@ -556,21 +573,21 @@ Após a seleção do modelo final, é fundamental avaliar a sua capacidade predi
 library(caret)
 library(pROC)
 
-probabilidades <- predict(modelo, type = "response")
+probabilidades <- predict(modelo, newdata = test_data, type = "response")
 
 previsoes <- ifelse(probabilidades > 0.5, "STAR", "GALAXY")
-previsoes <- factor(previsoes, levels = levels(data$class))
+previsoes <- factor(previsoes, levels = levels(test_data$class))
 
-matriz_confusao <- confusionMatrix(previsoes, data$class, positive = "STAR")
+matriz_confusao <- confusionMatrix(previsoes, test_data$class, positive = "STAR")
 print(matriz_confusao)
 
 ```
-O confronto entre as previsões do modelo e as classes reais das observações é resumido na Matriz de Confusão. Os resultados revelam uma Exatidão (Accuracy) global de 82.21%, o que indica que o modelo classifica corretamente a grande maioria dos objetos celestes. No entanto, a análise detalhada revela um claro desequilíbrio preditivo: o modelo apresenta uma Especificidade muito elevada de 94.31%, demonstrando uma excelente capacidade de identificar corretamente as Galáxias. Em contrapartida, a Sensibilidade é de apenas 48.89%. Isto significa que, utilizando o limiar de 0.5, o algoritmo falha a deteção de mais de metade das estrelas, classificando-as incorretamente como galáxias.
+O confronto entre as previsões do modelo e as classes reais das observações é resumido na Matriz de Confusão. Os resultados revelam uma Exatidão (Accuracy) global de 80.78%, o que indica que o modelo classifica corretamente a grande maioria dos objetos celestes. No entanto, a análise detalhada revela um claro desequilíbrio preditivo: o modelo apresenta uma Especificidade muito elevada de 93.88%, demonstrando uma excelente capacidade de identificar corretamente as Galáxias. Em contrapartida, a Sensibilidade é de apenas 44.73%. Isto significa que, utilizando o limiar de 0.5, o algoritmo falha a deteção de mais de metade das estrelas, classificando-as incorretamente como galáxias.
 
 Embora a Matriz de Confusão forneça uma avaliação detalhada para um ponto de corte específico, a robustez do modelo deve ser avaliada de forma global. Para tal, recorreu-se à Curva ROC (Receiver Operating Characteristic), que ilustra o compromisso entre a Taxa de Verdadeiros Positivos (Sensibilidade) e a Taxa de Falsos Positivos (Especificidade).
 
 ```{r}
-curva_roc <- roc(data$class, probabilidades)
+curva_roc <- roc(test_data$class, probabilidades)
 
 plot(curva_roc, 
      main = "Curva ROC - Modelo de Classificação Estelar", 
@@ -580,9 +597,9 @@ plot(curva_roc,
      legacy.axes = TRUE,
      print.thres = TRUE)
 ```
-Como se pode observar no gráfico, o modelo apresenta uma boa capacidade discriminatória, registando um AUC (Area Under the Curve) de 0.807. Adicionalmente, a análise da curva sugere que o fraco desempenho na Sensibilidade verificado na matriz de confusão pode ser mitigado. O gráfico assinala um ponto ótimo de corte a rondar os 0.389 (em vez do habitual 0.5), o qual permitiria um compromisso muito mais equilibrado entre a sensibilidade e a especificidade na classificação das estrelas e galáxias.
+Como se pode observar no gráfico, o modelo apresenta uma boa capacidade discriminatória, registando um AUC (Area Under the Curve) de 0.807. Adicionalmente, a análise da curva sugere que o fraco desempenho na Sensibilidade verificado na matriz de confusão pode ser mitigado. O gráfico assinala um ponto ótimo de corte a rondar os 0.401 (em vez do habitual 0.5), o qual permitiria um compromisso muito mais equilibrado entre a sensibilidade e a especificidade na classificação das estrelas e galáxias.
 
-Isto significa que reduzindo o limiar para 0.389 o modelo ficaria muito mais equilibrado, mitigando o facto de existirem muitas mais galáxias do que estrelas.
+Isto significa que reduzindo o limiar para 0.401 o modelo ficaria muito mais equilibrado, mitigando o facto de existirem muitas mais galáxias do que estrelas.
 
 <!-- Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 
