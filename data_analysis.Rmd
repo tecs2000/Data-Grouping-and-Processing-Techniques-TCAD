@@ -565,7 +565,22 @@ OR_final
 exp(confint(modelo))
 ```
 
-### 7 - Avaliação das Medidas de Diagnóstico
+É então possível retirar algumas conclusões apartir destes resultados. Por exemplo, como `u` tem *OR* de 1.2687 podemos inferir que por cada unidade de aumento na magnitude desta variável, as chances de um objeto ter como classe *STAR* aumenta 26.87%. 
+A variável `g` por sua vez, como tem *OR* de 0.1035, um aumento de uma unidade na sua magnitude reduz as chances do objeto ser desta classe em cerca de 89.7% ((1-0.1035)*100).
+
+### 6.2 - Teste de Razão de Verossimilhança
+
+```{r}
+TRV <- modelo$null.deviance - modelo$deviance
+gl <- modelo$df.null - modelo$df.residual
+p_value_global <- pchisq(TRV, df = gl, lower.tail = FALSE)
+
+cat("Estatística G (TRV):", TRV, "\nGraus de Liberdade:", gl, "\nValor-p:", p_value_global)
+```
+Através do Teste de Razão de Verossimilhança verifica-se que o modelo global é estatisticamento significativo (p < 0.001).
+
+
+## 7 - Avaliação das Medidas de Diagnóstico
 Após a seleção do modelo final, é fundamental avaliar a sua capacidade preditiva através de métricas de diagnóstico. Para isto, extraíram-se as probabilidades previstas pelo modelo para cada observação. Assumindo um ponto de corte estandardizado de 0.5, as observações com probabilidade superior a 50% foram classificadas como *STAR*, enquanto as restantes foram classificadas como *GALAXY*.
 
 
@@ -600,6 +615,66 @@ plot(curva_roc,
 Como se pode observar no gráfico, o modelo apresenta uma boa capacidade discriminatória, registando um AUC (Area Under the Curve) de 0.807. Adicionalmente, a análise da curva sugere que o fraco desempenho na Sensibilidade verificado na matriz de confusão pode ser mitigado. O gráfico assinala um ponto ótimo de corte a rondar os 0.401 (em vez do habitual 0.5), o qual permitiria um compromisso muito mais equilibrado entre a sensibilidade e a especificidade na classificação das estrelas e galáxias.
 
 Isto significa que reduzindo o limiar para 0.401 o modelo ficaria muito mais equilibrado, mitigando o facto de existirem muitas mais galáxias do que estrelas.
+
+## 8. Verificação das Condições de Aplicabilidade
+### 8.1 Verificação da linearidade do logit
+```{r}
+
+# Configurar a área de plot para uma grelha 2x2
+par(mfrow = c(2, 2))
+
+b_red <- coefficients(modelo)
+
+# Calcular os valores médios de cada variável para manter as restantes fixas
+m_delta <- mean(train_data$delta, na.rm = TRUE)
+m_u <- mean(train_data$u, na.rm = TRUE)
+m_g <- mean(train_data$g, na.rm = TRUE)
+m_r <- mean(train_data$r, na.rm = TRUE)
+
+# ---------------------------------------------------------
+# Gráfico para 'delta'
+x_delta <- seq(min(train_data$delta, na.rm=TRUE), max(train_data$delta, na.rm=TRUE), length.out = 100)
+c_delta <- b_red["(Intercept)"] + b_red["u"]*m_u + b_red["g"]*m_g + b_red["r"]*m_r
+
+plot(x_delta, 1 / (1 + exp(-(c_delta + b_red["delta"] * x_delta))), 
+     ylim=c(0,1), type="l", col="blue", lwd=2, 
+     xlab="delta", ylab="Probabilidade (STAR)", cex.lab=1.1)
+
+# ---------------------------------------------------------
+# Gráfico para 'u'
+x_u <- seq(min(train_data$u, na.rm=TRUE), max(train_data$u, na.rm=TRUE), length.out = 100)
+c_u <- b_red["(Intercept)"] + b_red["delta"]*m_delta + b_red["g"]*m_g + b_red["r"]*m_r
+
+plot(x_u, 1 / (1 + exp(-(c_u + b_red["u"] * x_u))), 
+     ylim=c(0,1), type="l", col="blue", lwd=2, 
+     xlab="Magnitude u", ylab="Probabilidade (STAR)", cex.lab=1.1)
+
+# ---------------------------------------------------------
+# Gráfico para 'g'
+x_g <- seq(min(train_data$g, na.rm=TRUE), max(train_data$g, na.rm=TRUE), length.out = 100)
+c_g <- b_red["(Intercept)"] + b_red["delta"]*m_delta + b_red["u"]*m_u + b_red["r"]*m_r
+
+plot(x_g, 1 / (1 + exp(-(c_g + b_red["g"] * x_g))), 
+     ylim=c(0,1), type="l", col="red", lwd=2, 
+     xlab="Magnitude g", ylab="Probabilidade (STAR)", cex.lab=1.1)
+
+# ---------------------------------------------------------
+# Gráfico para 'r'
+x_r <- seq(min(train_data$r, na.rm=TRUE), max(train_data$r, na.rm=TRUE), length.out = 100)
+c_r <- b_red["(Intercept)"] + b_red["delta"]*m_delta + b_red["u"]*m_u + b_red["g"]*m_g
+
+plot(x_r, 1 / (1 + exp(-(c_r + b_red["r"] * x_r))), 
+     ylim=c(0,1), type="l", col="blue", lwd=2, 
+     xlab="Magnitude r", ylab="Probabilidade (STAR)", cex.lab=1.1)
+
+# Repor as configurações de visualização ao normal (1x1)
+par(mfrow = c(1, 1))
+```
+Analisando o gráfico referente a cada variável é observável a probabilidade de um objecto ser classificado com classe *STAR* à medida que o valor da variável varia.
+`Delta` tem uma linha quase plana o que mostra que não importa o quanto esta variável mude, a probabilidade do objeto ter esta classificação muda muito pouco.
+A linha de `u` cresce à medida que este aumenta, ou seja, quanto maior for esta variável maior a chance do objeto ter esta classe.
+As variáveis `g` e `r` têm comportamentos contrários uma da outra, ambas apresentado picos, por volta do 20, onde a probabilidade do objeto ter classe *STAR* aumenta ou diminui imensamente.
+
 
 <!-- Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
 
