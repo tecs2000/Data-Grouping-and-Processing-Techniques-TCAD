@@ -111,34 +111,24 @@ data$spec_obj_ID <- NULL
   
 ```{r echo=TRUE, warning=FALSE}
 
+data$run_ID <- factor(data$run_ID)
+summary(data$run_ID)
+```
+```{r echo=TRUE, warning=FALSE}
+
 data$rerun_ID <- factor(data$rerun_ID)
 summary(data$rerun_ID)
 ```
 
-  Como todas as observações têm `rerun_ID = 301`, não existe qualquer diferença nesta variável entre estrelas e galáxias que o modelo possa utilizar para as distinguir. Por conseguinte, é justificável excluir `rerun_ID` do conjunto de variáveis explicativas, uma vez que não apresenta variabilidade nos dados.
-
+  Como todas as observações têm `rerun_ID = 301`, não existe qualquer diferença nesta variável entre estrelas e galáxias que o modelo possa utilizar para as distinguir. Por conseguinte, é justificável excluir `rerun_ID` do conjunto de variáveis explicativas, uma vez que não apresenta variabilidade nos dados. De forma análoga, `run_ID` identifica a execução em que os dados foram recolhidos, e não uma característica física intrínseca dos objetos, optou-se por não a incluir no modelo preditivo inicial.
+  
 ```{r echo=TRUE, warning=FALSE}
 
 data$rerun_ID <- NULL
-
-```
-
-Já para a variável `run_ID`, temos
-
-```{r echo=TRUE, warning=FALSE}
-data$run_ID <- factor(data$run_ID)
-summary(data$run_ID)
-```
-
-  Com isso, percebemos a existência de múltiplos identificadores, com frequências distintas, indicando que as observações não se encontram uniformemente distribuídas pelas execuções. Contudo, esta distribuição, por si só, não permite determinar a relevância da variável para a classificação dos objetos astronómicos.
-  
-  Uma vez que `run_ID` identifica a execução em que os dados foram recolhidos, e não uma característica física intrínseca dos objetos, optou-se por não a incluir no modelo preditivo inicial.
-
-```{r echo=TRUE, warning=FALSE}
-
 data$run_ID <- NULL
 
 ```
+
 
 ### 3.3. Tratamento das restantes variáveis relacionadas com a aquisição
 
@@ -168,9 +158,7 @@ sapply(data, function(x) sum(is.na(x)))
 
 \
 
-## 4. Análise Exploratória Gráfica
-
-Deste modo, é possível observar o comportamento das variáveis através de algumas estatísticas descritivas:
+### 3.5 Verificação e tratamento de valores sentinela
 
 ```{r, echo=FALSE, warning = FALSE, message=FALSE}
 
@@ -180,10 +168,8 @@ kable(summary(data))
 ```
 
   A análise das estatísticas descritivas revela uma inconsistência nas variáveis `u`, `g` e `z`: o valor mínimo observado é -9999, fisicamente impossível para uma magnitude fotométrica, cujos valores típicos se situam entre 10 e 30. Trata-se de um código sentinela utilizado pelo SDSS para indicar ausência de medição, ou seja, um valor em falta codificado numericamente, que a função `is.na()` não consegue detetar. Antes de prosseguir com a análise gráfica, é necessário tratar estes registos, uma vez que distorcem a escala dos gráficos e as medidas de resumo.
-
-### 4.1 Tratamento de valores sentinela e outliers
-
-Verificaremos primeiro quantas observações são afetadas:
+  
+  Verificaremos primeiro quantas observações são afetadas:
 
 ```{r, echo=FALSE, warning=FALSE}
 
@@ -205,7 +191,36 @@ summary(data[vars_num])
 
 ```
 
-Após a remoção, o `summary()` confirma que as variáveis passaram a apresentar intervalos fisicamente plausíveis.
+  Após a remoção, o `summary()` confirma que as variáveis passaram a apresentar intervalos fisicamente plausíveis.
+
+
+### 3.6 Normalização dos dados
+
+  Normalização dos dados é um passo importante no tratamento de dados, uma vez que torna a escala dos dados comparável, previnindo que variáveis de magnitude maior impactem o modelo de forma mais tendenciosa. Além disso, esta técnica acelera a convergência do modelo e faz com que todas as variaveis contribuam de forma semelhante ao modelo.
+  
+  Um exemplo da necessidade dessa operação é a variável `alpha`, que possui uma amplitude de 360.
+  
+```{r echo=TRUE, warning=FALSE}
+
+data[vars_num] <- lapply(data[vars_num], function(x) {
+  xmin <- min(x)
+  xmax <- max(x)
+
+  if (xmax == xmin) {
+    return(rep(0, length(x)))
+  }
+
+  (x - xmin) / (xmax - xmin)
+})
+
+summary(data[vars_num])
+
+```
+  
+
+## 4. Análise Exploratória Gráfica
+
+  Agora, faremos a análise exploratória gráfica a fim de observar o comportamento das variáveis através de algumas estatísticas descritivas:
   
   
 ### 4.2 Variável Categórica - `class`:
@@ -309,16 +324,9 @@ library(ggpubr)
 library(rstatix)
 ```
 
-Resumo dos dados:
-
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-summary(data)
-```
-
 ### 5.1 Métodos visuais
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-library("ggpubr")
 
 # Density plot
 d1<-ggdensity(data$alpha, xlab = "alpha",fill = "lightblue")
@@ -346,7 +354,7 @@ grid.arrange(q1, q2, q3, q4, q5, q6, q7, q8, ncol=4, nrow=2)
 
 ```
 
-  Os gráficos Q-Q confirmam a ausência de normalidade, pois os pontos se afastam da reta de referência em todas as variáveis. `alpha` e `delta` apresentam formato de "S" com patamares. `r` e `i` acompanham razoavelmente a reta na região central, mas desviam nas caudas, principalmente na superior, indicando caudas mais pesadas que as da normal e presença de valores extremos. O `redshift` se afasta bastante da reta, com acúmulo de pontos em valores próximos de zero e curvatura acentuada, coerente com a forte assimetria à direita. Em `u`, `g` e `z`, um único ponto isolado em -9999 domina a escala do gráfico e achata os demais, evidenciando um outlier (provavelmente erro de registro) que deve ser removido ou tratado como dado faltante.
+  Os gráficos Q-Q confirmam a ausência de normalidade, pois os pontos se afastam da reta de referência em todas as variáveis. `alpha` e `delta` apresentam formato de "S" com patamares. `r` e `i` acompanham razoavelmente a reta na região central, mas desviam nas caudas, principalmente na superior, indicando caudas mais pesadas que as da normal e presença de valores extremos. O `redshift` se afasta bastante da reta, com acúmulo de pontos em valores próximos de zero e curvatura acentuada, coerente com a forte assimetria à direita.
 
 ### 5.2 Testes Analíticos
 
@@ -385,20 +393,20 @@ lapply(data[, c("alpha", "delta", "u", "g", "r", "i", "z", "redshift")],
 
 ```
 
-  Após o tratamento dos valores sentinela (-9999), comparamos as médias de estrelas (STAR) e galáxias (GALAXY) usando o teste t de Welch. O resultado foi que as duas classes têm médias diferentes em quase todas as variáveis. A única exceção foi `delta`, que não mostrou diferença (p = 0,93).
+  Após a normalização dos dados e do tratamento dos valores sentinela (-9999), comparamos as médias de estrelas (STAR) e galáxias (GALAXY) usando o teste t de Welch. O resultado foi que as duas classes têm médias diferentes em quase todas as variáveis. A única exceção foi `delta`, que não mostrou diferença.
 
-  A variável que mais separa as classes é o `redshift`: a média das galáxias é cerca de 0,42, enquanto a das estrelas é praticamente zero. Isso faz sentido, pois as estrelas estão perto de nós e as galáxias estão muito mais distantes.
+  A variável que mais separa as classes é o `redshift`: a média das galáxias é cerca de 0,21, enquanto a das estrelas é praticamente zero. Isso faz sentido, pois as estrelas estão perto de nós e as galáxias estão muito mais distantes.
 
-  Nas magnitudes, as galáxias têm valores maiores que as estrelas, ou seja, são menos brilhantes. A diferença é maior nos filtros `u` (≈ 1,43) e `g` (≈ 1,29), e vai diminuindo em `r` (≈ 0,64), `i` (≈ 0,31) e `z` (≈ 0,11).
+  Nas magnitudes, as galáxias têm valores maiores que as estrelas, ou seja, são menos brilhantes. A diferença é maior nos filtros `u` (≈ 0,077) e `g` (≈ 0,06), e vai diminuindo em `r` (≈ 0,03), `i` (≈ 0,02) e `z` (≈ 0,005).
 
-  Em alpha, a diferença é pequena (cerca de 3,7°) e provavelmente só reflete a região do céu observada, e não uma característica real dos objetos.
+  Em alpha, a diferença é pequena (≈ 0,01), refletindo a região do céu observada, e não uma característica real dos objetos.
 
-Assim, `redshift`, `u`, `g` e `r` são as variáveis mais promissoras para distinguir galáxias de estrelas no modelo.
+  Assim, `redshift`, `u`, `g` e `r` são as variáveis mais promissoras para distinguir galáxias de estrelas no modelo.
 
 
 ### 5.2 Testes comparativos: numérico vs numérico
 
-Agora, avaliaremos a associação entre atributos numéricos através da correlação de Pearson e a correlação de Spearman.
+  Agora, avaliaremos a associação entre atributos numéricos através da correlação de Pearson e a correlação de Spearman.
 
 ```{r, echo=FALSE, warning=FALSE}
 # Matriz de correlação entre variáveis quantitativas
@@ -420,17 +428,18 @@ corrplot(M, method = "number", type = "lower",number.cex = .7, tl.cex = .6)
 corrplot.mixed(MS,number.cex = .7,tl.col = "blue", tl.cex = .45)
 ```
 
-  A matriz de correlação mostra que as magnitudes `u`, `g`, `r`, `i` e `z` são fortemente correlacionadas entre si (de 0,64 a 0,98), sobretudo entre filtros vizinhos, como i e z (0,98). Já `alpha` e `delta` têm correlações próximas de zero com as demais variáveis, e o `redshift` apresenta correlação moderada com as magnitudes (de 0,44 a 0,67). Como as magnitudes carregam informação muito parecida, incluir todas no modelo de regressão logística pode causar multicolinearidade.
+  A matriz de correlação mostra que as magnitudes `u`, `g`, `r`, `i` e `z` são fortemente correlacionadas entre si (de 0,87 a 0,97), sobretudo entre filtros vizinhos, como i e z (0,97). Já `alpha` e `delta` têm correlações próximas de zero com as demais variáveis, e o `redshift` apresenta correlação moderada com as magnitudes (de 0,59 a 0,52). Como as magnitudes carregam informação muito parecida, incluir todas no modelo de regressão logística pode causar multicolinearidade.
 
 ## 6. Criação dos Modelos
 
-Feita a análise, o tratamento e a exploração dos dados podemos agora criar os modelos.
+  Feita a análise, o tratamento e a exploração dos dados podemos agora criar os modelos.
 
 ```{r, warning=FALSE}
 
+library(caret)
+
 # dividir os dados entre dados de teste e dados de treino
 set.seed(123)
-library(caret)
 
 indices_treino <- createDataPartition(data$class, p = 0.7, list = FALSE)
 
@@ -440,7 +449,7 @@ test_data <- data[-indices_treino, ]
 nrow(train_data)
 nrow(test_data)
 
-# Construção do Modelo de Regressão Logística
+# Construção do Modelo de Regressão Logística com todas as variaveis numericas
 modelo1 = glm(class ~ alpha + delta + u + g + r + i + z + redshift, 
               family = binomial(link = logit), 
               data = train_data)
@@ -464,17 +473,7 @@ exp(confint(modelo1))
 
   Foi observado no resultado que a variável `redshift` apresenta um coeficiente extremo, originando um intervalo de confiança para a *Odds Ratio* de [0, 0] devido a underflow numérico. O facto de o algoritmo ter necessitado de 17 iterações para convergir revela que o redshift está a causar Separação Perfeita. Ou seja, o modelo consegue distinguir as classes com um nível de certeza irrealista apenas com esta variável. Para evitar o enviesamento do algoritmo e avaliar a capacidade preditiva das variáveis fotométricas, optou-se por remover o `redshift`.
   
-  Além disso, o resultado do modelo reforçou um dado visto na matriz de correlação: `g`, `r`, `i` e `z` são muito correlacionadas (0,83 a 0,98). Isso explica por que `i` e `z` aparecem "não significativas".
-
-  Teste VIF de Multicolinearidade:
-  
-```{r, echo=FALSE, warning=FALSE}
-library(car)
-vif(modelo1)
-```
-
-Vale ressaltar que VIF > 10 indica multicolinearidade severa, destacando que a variável é redundante e pode comprometer o modelo.
-
+  Além disso, o resultado do modelo reforçou um dado visto na matriz de correlação: `g`, `r`, `i` e `z` são muito correlacionadas (0,87 a 0,97). Isso explica por que `i` e `z` aparecem "não significativas". Assim, experimentaremos a seguir a construção de um modelo sem essas variáveis.
 
 ```{r, warning=FALSE}
 
@@ -494,10 +493,6 @@ modelo3 = glm(class ~ redshift + delta + u + g + r,
 summary(modelo3) # há uma pequena melhora do modelo com relação ao anterior, 
                  # mostrando que as variaveis removidas não agregavam ao modelo preditivo
 
-# Avaliando a correlação entre as variaveis restantes do modelo3
-vif(modelo3) # menos parametros, menos correlação entre eles, mesma qualidade
-
-
 data$redshift <- NULL 
 
 ## MODELO 4 (antigo final) 
@@ -512,7 +507,7 @@ summary(modelo4)
 modelo = glm(class ~ delta + u + g + r, 
               family = binomial(link = logit), 
               data = train_data)
-summary(modelo) # antigo modelo 4 
+summary(modelo) # final
 
 # Extração dos coeficientes
 coef(modelo)
@@ -528,14 +523,17 @@ OR_all
 exp(confint(modelo))
 
 ```
+
 A construção dos modelos de regressão logística permitiu confirmar o comportamento anómalo do preditor redshift. Nos testes iniciais (Modelos 2 e 3), a presença desta variável resultou num número elevado de iterações do algoritmo (17 Fisher Scoring iterations) e em coeficientes extremos. 
 
 Por conseguinte, a remoção do redshift (Modelo 4) revelou-se indispensável, estabilizando o algoritmo (5 iterações) com um AIC de 53520 e permitindo avaliar o verdadeiro poder preditivo das variáveis fotométricas. 
+
 Ao construir o Modelo Final apenas com alguns dos filtros fotométricos (`u`, `g` e `r`) verificou-se que todos os preditores são estatisticamente significativos ($p < 0.05$). A estabilidade do modelo é atestada pelas 5 iterações necessárias para a sua convergência e por intervalos de confiança válidos. 
 É importante notar a forte semelhança de resultados entre o Modelo Final (composto apenas por delta, u, g, r) e o Modelo 4 (que inclui adicionalmente alpha, i e z). Ambos os modelos convergem rapidamente e apresentam métricas de ajustamento muito próximas. Como o Modelo Final é mais reduzido este será mantido como base de avaliação.
 
 A análise das **Odds Ratios** (OR) extraídas do modelo final revela que as coordenadas astronómicas (alpha e delta), embora estatisticamente significativas devido à elevada dimensão da amostra, apresentam um impacto prático negligenciável na distinção das classes. Em contraste, as características fotométricas assumem o papel principal na classificação. 
-Destaca-se o filtro verde (g), cujo aumento de uma unidade reduz substancialmente as chances de o objeto pertencer à classe de referência (**OR** $\approx 0.134$), enquanto o aumento no filtro vermelho (r) multiplica essas mesmas chances por aproximadamente 3.45. Esta dinâmica confirma a importância das assinaturas luminosas multiespectrais na correta classificação dos objetos celestes.
+
+Destaca-se o filtro verde (g), cujo aumento de uma unidade na escala normalizada está associado a uma redução praticamente total das odds de um objeto pertencer à classe STAR (OR $\approx 1{,}61 \times 10^{-21}$). Por sua vez, o aumento de uma unidade no filtro vermelho (r) multiplica essas mesmas odds por aproximadamente $8{,}29 \times 10^{16}$, indicando um aumento extremamente acentuado. Esta dinâmica sugere que os filtros verde e vermelho desempenham um papel relevante na classificação dos objetos celestes.
 
 ### 6.1 - Seleção de variáveis (Método stepwise)
 
@@ -552,21 +550,24 @@ modelo <- step(modelo, direction = "both", trace = 0)
 summary(modelo)
 ```
 O facto de o modelo não ter sofrido qualquer alteração explica-se pela elevada relevância estatística de todos os preditores incluídos. Consequentemente, o algoritmo determinou que a remoção de qualquer uma destas variáveis provocaria um aumento do valor do AIC. Assim, o método conclui que o modelo já corresponde à configuração ótima e mais eficiente para a previsão.
+
 Adicionalmente, podemos extrair as *Odds Ratio* para interpretar o impacto de cada preditor.
 
 ```{r, warning=FALSE}
 # Extração dos coeficientes do modelo final
 b_final <- coefficients(modelo)
+b_final
 
 # Cálculo das Odds Ratios
 OR_final <- exp(b_final[-1])
-
 OR_final
+
 exp(confint(modelo))
 ```
 
-É então possível retirar algumas conclusões apartir destes resultados. Por exemplo, como `u` tem *OR* de 1.2687 podemos inferir que por cada unidade de aumento na magnitude desta variável, as chances de um objeto ter como classe *STAR* aumenta 26.87%. 
-A variável `g` por sua vez, como tem *OR* de 0.1035, um aumento de uma unidade na sua magnitude reduz as chances do objeto ser desta classe em cerca de 89.7% ((1-0.1035)*100).
+É então possível retirar algumas conclusões a partir destes resultados. Por exemplo, a variável `u` apresenta um Odds Ratio (OR) de aproximadamente 82,82, o que indica que, por cada unidade de aumento na escala normalizada desta variável, as odds de um objeto pertencer à classe `STAR` aumentam cerca de 8.182,42%, mantendo as restantes variáveis constantes.
+
+A variável `g`, por sua vez, apresenta um OR de aproximadamente 1,61 × 10⁻²¹, um valor extremamente próximo de zero. Isto indica que, por cada unidade de aumento na escala normalizada desta variável, as odds de um objeto pertencer à classe STAR diminuem praticamente 100%, mantendo as restantes variáveis constantes.
 
 ### 6.2 - Teste de Razão de Verossimilhança
 
@@ -577,10 +578,12 @@ p_value_global <- pchisq(TRV, df = gl, lower.tail = FALSE)
 
 cat("Estatística G (TRV):", TRV, "\nGraus de Liberdade:", gl, "\nValor-p:", p_value_global)
 ```
+
 Através do Teste de Razão de Verossimilhança verifica-se que o modelo global é estatisticamento significativo (p < 0.001).
 
 
 ## 7 - Avaliação das Medidas de Diagnóstico
+
 Após a seleção do modelo final, é fundamental avaliar a sua capacidade preditiva através de métricas de diagnóstico. Para isto, extraíram-se as probabilidades previstas pelo modelo para cada observação. Assumindo um ponto de corte estandardizado de 0.5, as observações com probabilidade superior a 50% foram classificadas como *STAR*, enquanto as restantes foram classificadas como *GALAXY*.
 
 
@@ -670,9 +673,12 @@ plot(x_r, 1 / (1 + exp(-(c_r + b_red["r"] * x_r))),
 # Repor as configurações de visualização ao normal (1x1)
 par(mfrow = c(1, 1))
 ```
+
 Analisando o gráfico referente a cada variável é observável a probabilidade de um objecto ser classificado com classe *STAR* à medida que o valor da variável varia.
+
 `Delta` tem uma linha quase plana o que mostra que não importa o quanto esta variável mude, a probabilidade do objeto ter esta classificação muda muito pouco.
 A linha de `u` cresce à medida que este aumenta, ou seja, quanto maior for esta variável maior a chance do objeto ter esta classe.
+
 As variáveis `g` e `r` têm comportamentos contrários uma da outra, ambas apresentado picos, por volta do 20, onde a probabilidade do objeto ter classe *STAR* aumenta ou diminui imensamente.
 
 
