@@ -11,7 +11,6 @@ output:
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
-\
 
 ## 1. Introdução
 
@@ -21,7 +20,6 @@ knitr::opts_chunk$set(echo = FALSE)
 
   Uma vez que o objetivo deste trabalho passa pela aplicação da regressão logística binária, será necessário selecionar duas das três classes existentes, transformando o problema original numa tarefa de classificação binária. Esta seleção será acompanhada por procedimentos de pré-processamento e limpeza dos dados, de modo a garantir a sua qualidade e adequação à modelação. Por fim, o desempenho do modelo será avaliado com base em métricas apropriadas, permitindo analisar a sua capacidade de classificação e a qualidade das previsões obtidas.
 
-\
 
 ## 2. Descrição da Base de Dados
 
@@ -49,8 +47,6 @@ knitr::opts_chunk$set(echo = FALSE)
 - **`fiber_ID`**: identificador da fibra ótica utilizada para captar a luz do objeto observado no plano focal do instrumento.
 
 
-\
-
 A base de dados é assim representada:
 
 ```{r, include=FALSE}
@@ -69,7 +65,6 @@ datatable(data)
 
 ```
 
-\
 
 
 ## 3. Tratamento de Dados
@@ -100,7 +95,7 @@ summary(data$class)
 levels(data$class)
 ```
 
-/
+
 
 ### 3.2. Tratamento dos identificadores dos objetos
 
@@ -133,7 +128,7 @@ data$run_ID <- NULL
 
 ```
 
-/
+
 
 ### 3.3. Tratamento das restantes variáveis relacionadas com a aquisição
 
@@ -149,7 +144,7 @@ data$fiber_ID <- NULL
 
 ```
 
-/
+
 
 ### 3.4 Verificação da existência de valores em falta
 
@@ -163,7 +158,6 @@ sapply(data, function(x) sum(is.na(x)))
 
   A partir da função acima, atestamos a inexistência de valores em falta explícitos (NA).
 
-\
 
 ### 3.5 Verificação e tratamento de valores sentinela
 
@@ -224,8 +218,7 @@ summary(data[vars_num])
 
 ```
  
- / 
-
+ 
 ## 4. Análise Exploratória Gráfica
 
   Agora, faremos a análise exploratória gráfica a fim de observar o comportamento das variáveis através de algumas estatísticas descritivas:
@@ -255,7 +248,6 @@ grid.arrange(a)
 
 A partir do gráfico de barras acima, vemos que as classes não são balancedas.
 
-/
 
 ### 4.3 Variáveis Numéricas - `alpha`, `delta`, `u`, `g`, `r`, `i`, `z`, `redshift`:
 
@@ -325,9 +317,11 @@ criar_boxplot("delta", "Magnitude delta")
 criar_boxplot("redshift", "Magnitude Redshift")
 
 ```
+
+\newline
+
   Observa-se que para a maioria das variáveis as medianas muito próximas e as classes se sobrepõem bastante, indicando que essas variáveis não distinguem bem estrelas de galáxias. Já a variável `redshift` presenta comportamento bem diferente: as estrelas concentram-se em valores próximos de zero, enquanto as galáxias assumem valores mais altos, com sobreposição muito pequena entre as classes. Isso indica que o redshift tem grande capacidade de separar as duas classes, o que é coerente com os resultados do teste t e da regressão logística.
   
-/
 
 ## 5.  Análise Estatística Primária
 
@@ -371,8 +365,6 @@ grid.arrange(q1, q2, q3, q4, q5, q6, q7, q8, ncol=4, nrow=2)
 ```
 
   Os gráficos Q-Q indicam que as variáveis se dividem em dois grupos. `alpha`, `delta` e `redshift` afastam-se claramente da reta de referência: `alpha` e `delta` apresentam formato de "S" com patamares, e o `redshift` acumula pontos próximos de zero com curvatura acentuada, coerente com sua forte assimetria à direita. Já as magnitudes `u`, `g`, `r`, `i` e `z` acompanham razoavelmente a reta na região central, afastando-se apenas nas extremidades, sobretudo na cauda superior, o que indica distribuições aproximadamente normais, com alguns valores extremos à direita. Assim, nenhuma variável é perfeitamente normal, mas as magnitudes se aproximam bem mais desse comportamento do que as demais.
-  
-/
 
 ### 5.2 Testes Analíticos
 
@@ -438,7 +430,6 @@ corrplot.mixed(MS,number.cex = .7,tl.col = "blue", tl.cex = .45)
 
   A matriz de correlação mostra que as magnitudes `u`, `g`, `r`, `i` e `z` são fortemente correlacionadas entre si (de 0,84 a 0,98), sobretudo entre filtros vizinhos, como i e z (0,98). Já `alpha` e `delta` têm correlações próximas de zero com as demais variáveis, e o `redshift` apresenta correlação moderada com as magnitudes (de 0,56 a 0,44). Como as magnitudes carregam informação muito parecida, incluir todas no modelo de regressão logística pode causar multicolinearidade.
 
-/
 
 ## 6. Criação dos Modelos
 
@@ -545,7 +536,6 @@ A análise das **Odds Ratios** (OR) extraídas do modelo final revela que as coo
 
 Destaca-se o filtro verde (g), cujo aumento de uma unidade na escala normalizada está associado a uma redução praticamente total das odds de um objeto pertencer à classe STAR (OR $\approx 1{,}61 \times 10^{-21}$). Por sua vez, o aumento de uma unidade no filtro vermelho (r) multiplica essas mesmas odds por aproximadamente $8{,}29 \times 10^{16}$, indicando um aumento extremamente acentuado. Esta dinâmica sugere que os filtros verde e vermelho desempenham um papel relevante na classificação dos objetos celestes.
 
-/
 
 ### 6.1 Seleção de variáveis (Método stepwise)
 
@@ -575,7 +565,6 @@ cat("Estatística G (TRV):", TRV, "\nGraus de Liberdade:", gl, "\nValor-p:", p_v
 
 Através do Teste de Razão de Verossimilhança verifica-se que o modelo global é estatisticamento significativo ($p < 0,001$).
 
-/
 
 ## 7. Avaliação das Medidas de Diagnóstico
 
@@ -614,7 +603,6 @@ Como se pode observar no gráfico, o modelo apresenta uma boa capacidade discrim
 
 Isto significa que reduzindo o limiar para 0.401 o modelo ficaria muito mais equilibrado, mitigando o facto de existirem muitas mais galáxias do que estrelas.
 
-/
 
 ## 8. Verificação das Condições de Aplicabilidade
 ### 8.1 Verificação da linearidade do logit
