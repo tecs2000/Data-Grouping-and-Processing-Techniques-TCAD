@@ -15,9 +15,9 @@ knitr::opts_chunk$set(echo = FALSE)
 
 ## 1. Introdução
 
-  O presente trabalho tem como objetivo realizar uma análise exploratória do *Stellar Classification Dataset – SDSS17*, bem como proceder ao pré-processamento dos dados e à análise estatística das variáveis, com vista à posterior construção de um modelo preditivo. Para esse efeito, será aplicada a regressão logística, uma técnica estatística utilizada para modelar a probabilidade de ocorrência de um determinado resultado em função de um conjunto de variáveis explicativas. Embora a regressão logística binária seja adequada para variáveis de resposta dicotómicas, a sua aplicação a problemas com mais de duas categorias requer uma abordagem de regressão logística multinomial ou a adaptação do problema a uma classificação binária.
+  O presente trabalho tem como objetivo realizar uma análise exploratória do *Stellar Classification Dataset – SDSS17*, bem como proceder ao pré-processamento dos dados e à análise estatística das variáveis, com vista à posterior construção de um modelo preditivo. Para esse efeito, será aplicada a regressão logística, uma técnica estatística utilizada para modelar a probabilidade de ocorrência de um determinado resultado em função de um conjunto de variáveis explicativas. A regressão logística binária é adequada para variáveis de resposta dicotómicas e a sua aplicação a problemas com mais de duas categorias requer uma adaptação do problema a uma classificação binária.
 
-  O dataset em estudo contém 100 000 observações e 17 variáveis explicativas, que incluem características fotométricas, coordenadas astronómicas e outras informações relativas aos objetos observados. Com base nestas características, pretende-se classificar os objetos astronómicos em três categorias distintas: estrelas (*stars*), galáxias (*galaxies*) e quasares (*quasars*). A análise destas variáveis permitirá compreender melhor os dados e identificar as características potencialmente relevantes para a capacidade preditiva do modelo.
+  O dataset em estudo contém 100.000 observações e 17 variáveis explicativas, que incluem características fotométricas, coordenadas astronómicas e outras informações relativas aos objetos observados. Com base nestas características, classifica-se os objetos astronómicos em três categorias distintas: estrelas (*stars*), galáxias (*galaxies*) e quasares (*quasars*). A análise destas variáveis permitirá compreender melhor os dados e identificar as características potencialmente relevantes para a capacidade preditiva do modelo.
 
   Uma vez que o objetivo deste trabalho passa pela aplicação da regressão logística binária, será necessário selecionar duas das três classes existentes, transformando o problema original numa tarefa de classificação binária. Esta seleção será acompanhada por procedimentos de pré-processamento e limpeza dos dados, de modo a garantir a sua qualidade e adequação à modelação. Por fim, o desempenho do modelo será avaliado com base em métricas apropriadas, permitindo analisar a sua capacidade de classificação e a qualidade das previsões obtidas.
 
@@ -69,14 +69,14 @@ datatable(data)
 
 ```
 
-
 \
+
 
 ## 3. Tratamento de Dados
 
 ### 3.1. Tratamento da variável de resposta
 
-  A variável `class` foi identificada como a variável categórica de resposta, uma vez que permite classificar os objetos astronómicos em três categorias distintas: estrela (STAR), galáxia (GALAXY) ou quasar (QSO). Através da função str(), verificou-se que esta variável se encontrava armazenada como texto (character). Assim, procedeu-se à sua conversão para fator (factor), de modo a representar explicitamente a sua natureza categórica e facilitar a realização das análises estatísticas subsequentes.
+  A variável `class` foi identificada como a variável categórica de resposta, uma vez que permite classificar os objetos astronómicos em três categorias distintas: estrela (*STAR*), galáxia (*GALAXY*) ou quasar (*QSO*). Através da função `str()`, verificou-se que esta variável se encontrava armazenada como texto (character). Assim, procedeu-se à sua conversão para fator (`factor), de modo a representar explicitamente a sua natureza categórica e facilitar a realização das análises estatísticas subsequentes.
   
 
 ```{r echo=TRUE, warning=FALSE}
@@ -87,7 +87,9 @@ data$class <- as.factor(data$class)
 summary(data$class)
 ```
 
-  Com o objetivo de aplicar um modelo de regressão logística binária, optou-se por restringir a análise às classes STAR (estrelas) e GALAXY (galáxias), excluindo as observações pertencentes à classe QSO (quasares) de menor frequência. Esta decisão permite formular o problema de classificação como uma distinção entre duas categorias. Após a remoção das observações da classe QSO, eliminaram-se também os níveis do fator que deixaram de estar representados na base de dados, garantindo que a variável de resposta contém apenas as duas classes consideradas na análise.
+  Com o objetivo de aplicar um modelo de regressão logística binária, optou-se por restringir a análise às classes *STAR* (estrelas) e *GALAXY* (galáxias), excluindo as observações pertencentes à classe *QSO* (quasares) de menor frequência. Esta decisão permite formular o problema de classificação como uma distinção entre duas categorias. 
+  
+  Após a remoção das observações da classe *QSO*, eliminaram-se também os níveis do fator que deixaram de estar representados na base de dados, garantindo que a variável de resposta contém apenas as duas classes consideradas na análise.
   
 ```{r echo=TRUE, warning=FALSE}
 
@@ -98,16 +100,18 @@ summary(data$class)
 levels(data$class)
 ```
 
+/
+
 ### 3.2. Tratamento dos identificadores dos objetos
 
-  Foram identificadas duas variáveis com funções essencialmente identificadoras: `obj_ID`, que identifica o objeto no catálogo de imagens, e `spec_obj_ID`, que identifica os objetos observados por espectroscopia ótica. Embora sejam representadas numericamente, estas variáveis não correspondem a propriedades físicas dos objetos astronómicos. A sua utilização direta como variáveis explicativas poderia levar o modelo a aprender associações artificiais (vieses) entre os identificadores e a classe dos objetos, sem garantir capacidade de generalização para novas observações. Assim, optou-se por excluí-las do conjunto de variáveis preditoras.
+  Foram identificadas duas variáveis com funções essencialmente identificadoras: `obj_ID`, que identifica o objeto no catálogo de imagens, e `spec_obj_ID`, que identifica os objetos observados por espectroscopia ótica. Embora sejam representadas numericamente, estas variáveis não correspondem a propriedades físicas dos astros. A sua utilização direta como variáveis explicativas poderia levar o modelo a aprender associações artificiais (vieses) entre os identificadores e a classe dos objetos, sem garantir capacidade de generalização para novas observações. Assim, optou-se por excluí-las do conjunto de variáveis preditoras.
   
 ```{r echo=TRUE, warning=FALSE}
 data$obj_ID <- NULL
 data$spec_obj_ID <- NULL
 ```
 
-  Variáveis como `run_ID`, que identifica a execução de uma observação, e `rerun_ID` precisam de uma observação mais detalhada quanto às suas distribuições numéricas.
+  Variáveis como `run_ID`, que identifica a execução de uma observação, e `rerun_ID`, precisam de uma observação mais detalhada quanto às suas distribuições numéricas.
   
 ```{r echo=TRUE, warning=FALSE}
 
@@ -129,6 +133,7 @@ data$run_ID <- NULL
 
 ```
 
+/
 
 ### 3.3. Tratamento das restantes variáveis relacionadas com a aquisição
 
@@ -144,6 +149,8 @@ data$fiber_ID <- NULL
 
 ```
 
+/
+
 ### 3.4 Verificação da existência de valores em falta
 
   Um dos principais tópicos a abordar no tratamento de base de dados consiste no tratamento de valores em falta. Assim, precisamos observar a existência desses valores na base de dados sendo trabalhada, a fim de identificar a necessidade da aplicação de técnicas adicionais no tratamento desses dados.
@@ -154,7 +161,7 @@ sapply(data, function(x) sum(is.na(x)))
 
 ```
 
-  A partir da função acima, atestamos a inexistência de valores em falta explícitos (NA). A verificação de valores implícitos ou fisicamente inconsistentes será feita na análise exploratória (Secção 4).
+  A partir da função acima, atestamos a inexistência de valores em falta explícitos (NA).
 
 \
 
@@ -167,9 +174,9 @@ kable(summary(data))
 
 ```
 
-  A análise das estatísticas descritivas revela uma inconsistência nas variáveis `u`, `g` e `z`: o valor mínimo observado é -9999, fisicamente impossível para uma magnitude fotométrica, cujos valores típicos se situam entre 10 e 30. Trata-se de um código sentinela utilizado pelo SDSS para indicar ausência de medição, ou seja, um valor em falta codificado numericamente, que a função `is.na()` não consegue detetar. Antes de prosseguir com a análise gráfica, é necessário tratar estes registos, uma vez que distorcem a escala dos gráficos e as medidas de resumo.
+  A análise das estatísticas descritivas revela uma inconsistência nas variáveis `u`, `g` e `z`: o valor mínimo observado é -9999, fisicamente impossível para uma magnitude fotométrica. Trata-se de um código sentinela utilizado pelo SDSS para indicar ausência de medição, ou seja, um valor em falta codificado numericamente, que a função `is.na()` não consegue detetar. Antes de prosseguir com a análise gráfica, é necessário tratar estes registos, uma vez que distorcem a escala dos gráficos e as medidas de resumo.
   
-  Verificaremos primeiro quantas observações são afetadas:
+  Verifiquemos quantas observações são afetadas:
 
 ```{r, echo=FALSE, warning=FALSE}
 
@@ -196,7 +203,7 @@ summary(data[vars_num])
 
 ### 3.6 Normalização dos dados
 
-  Normalização dos dados é um passo importante no tratamento de dados, uma vez que torna a escala dos dados comparável, previnindo que variáveis de magnitude maior impactem o modelo de forma mais tendenciosa. Além disso, esta técnica acelera a convergência do modelo e faz com que todas as variaveis contribuam de forma semelhante ao modelo.
+  Normalização dos dados é um passo importante no tratamento de dados, uma vez que torna a escala dos dados comparável, prevenindo que variáveis de magnitude maior impactem o modelo de forma tendenciosa. Além disso, esta técnica acelera a convergência do modelo e faz com que todas as variaveis contribuam de forma semelhante para a medição.
   
   Um exemplo da necessidade dessa operação é a variável `alpha`, que possui uma amplitude de 360.
   
@@ -216,7 +223,8 @@ data[vars_num] <- lapply(data[vars_num], function(x) {
 summary(data[vars_num])
 
 ```
-  
+ 
+ / 
 
 ## 4. Análise Exploratória Gráfica
 
@@ -244,6 +252,10 @@ a = ggplot(data) +
 grid.arrange(a)
 
 ```
+
+A partir do gráfico de barras acima, vemos que as classes não são balancedas.
+
+/
 
 ### 4.3 Variáveis Numéricas - `alpha`, `delta`, `u`, `g`, `r`, `i`, `z`, `redshift`:
 
@@ -286,6 +298,8 @@ grid.arrange(b, c, d, e, f, g, h, i, ncol=4, nrow=2)
 
 ```
 
+  A partir dos histogramas, observa-se que as variáveis `u`, `g` e `r` apresentam formato aproximadamente simétrico, com um único pico, aproximando-se de uma distribuição normal, embora com pequenas assimetrias. Já `i` (Filtro do Infravermelho) e `z` mostram assimetria à esquerda, o `redshift` apresenta forte assimetria à direita, e `alpha` e `delta` têm distribuições irregulares, com vários picos. Assim, nenhuma variável segue exatamente uma distribuição normal, o que é coerente com os resultados dos testes de normalidade a seguir.
+  
 ### 4.4 Boxplots
 
 ```{r, echo=FALSE, warning = FALSE, message=FALSE}
@@ -311,7 +325,9 @@ criar_boxplot("delta", "Magnitude delta")
 criar_boxplot("redshift", "Magnitude Redshift")
 
 ```
-
+  Observa-se que para a maioria das variáveis as medianas muito próximas e as classes se sobrepõem bastante, indicando que essas variáveis não distinguem bem estrelas de galáxias. Já a variável `redshift` presenta comportamento bem diferente: as estrelas concentram-se em valores próximos de zero, enquanto as galáxias assumem valores mais altos, com sobreposição muito pequena entre as classes. Isso indica que o redshift tem grande capacidade de separar as duas classes, o que é coerente com os resultados do teste t e da regressão logística.
+  
+/
 
 ## 5.  Análise Estatística Primária
 
@@ -354,11 +370,13 @@ grid.arrange(q1, q2, q3, q4, q5, q6, q7, q8, ncol=4, nrow=2)
 
 ```
 
-  Os gráficos Q-Q confirmam a ausência de normalidade, pois os pontos se afastam da reta de referência em todas as variáveis. `alpha` e `delta` apresentam formato de "S" com patamares. `r` e `i` acompanham razoavelmente a reta na região central, mas desviam nas caudas, principalmente na superior, indicando caudas mais pesadas que as da normal e presença de valores extremos. O `redshift` se afasta bastante da reta, com acúmulo de pontos em valores próximos de zero e curvatura acentuada, coerente com a forte assimetria à direita.
+  Os gráficos Q-Q indicam que as variáveis se dividem em dois grupos. `alpha`, `delta` e `redshift` afastam-se claramente da reta de referência: `alpha` e `delta` apresentam formato de "S" com patamares, e o `redshift` acumula pontos próximos de zero com curvatura acentuada, coerente com sua forte assimetria à direita. Já as magnitudes `u`, `g`, `r`, `i` e `z` acompanham razoavelmente a reta na região central, afastando-se apenas nas extremidades, sobretudo na cauda superior, o que indica distribuições aproximadamente normais, com alguns valores extremos à direita. Assim, nenhuma variável é perfeitamente normal, mas as magnitudes se aproximam bem mais desse comportamento do que as demais.
+  
+/
 
 ### 5.2 Testes Analíticos
 
-Dada a quantidade de observações na base de dados, para a realização do teste de Shapiro-Wilk, precisamos selecionar uma amostra aleatória de, no máximo, 5000 observações por variável, devido à limitação da função em R.
+  Dada a quantidade de observações na base de dados, para a realização do teste de Shapiro-Wilk, precisamos selecionar uma amostra aleatória de, no máximo, 5000 observações por variável, devido à limitação da função em R.
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 
@@ -393,7 +411,7 @@ lapply(data[, c("alpha", "delta", "u", "g", "r", "i", "z", "redshift")],
 
 ```
 
-  Após a normalização dos dados e do tratamento dos valores sentinela (-9999), comparamos as médias de estrelas (STAR) e galáxias (GALAXY) usando o teste t de Welch. O resultado foi que as duas classes têm médias diferentes em quase todas as variáveis. A única exceção foi `delta`, que não mostrou diferença.
+  Após a normalização dos dados e do tratamento dos valores sentinela (-9999), comparamos as médias de estrelas (*STAR*) e galáxias (*GALAXY*) usando o teste t de Welch. O resultado foi que as duas classes têm médias diferentes em quase todas as variáveis. A única exceção foi `delta`, que não mostrou diferença.
 
   A variável que mais separa as classes é o `redshift`: a média das galáxias é cerca de 0,21, enquanto a das estrelas é praticamente zero. Isso faz sentido, pois as estrelas estão perto de nós e as galáxias estão muito mais distantes.
 
@@ -418,7 +436,9 @@ corrplot(MS, method = "circle")
 corrplot.mixed(MS,number.cex = .7,tl.col = "blue", tl.cex = .45)
 ```
 
-  A matriz de correlação mostra que as magnitudes `u`, `g`, `r`, `i` e `z` são fortemente correlacionadas entre si (de 0,87 a 0,97), sobretudo entre filtros vizinhos, como i e z (0,97). Já `alpha` e `delta` têm correlações próximas de zero com as demais variáveis, e o `redshift` apresenta correlação moderada com as magnitudes (de 0,59 a 0,52). Como as magnitudes carregam informação muito parecida, incluir todas no modelo de regressão logística pode causar multicolinearidade.
+  A matriz de correlação mostra que as magnitudes `u`, `g`, `r`, `i` e `z` são fortemente correlacionadas entre si (de 0,84 a 0,98), sobretudo entre filtros vizinhos, como i e z (0,98). Já `alpha` e `delta` têm correlações próximas de zero com as demais variáveis, e o `redshift` apresenta correlação moderada com as magnitudes (de 0,56 a 0,44). Como as magnitudes carregam informação muito parecida, incluir todas no modelo de regressão logística pode causar multicolinearidade.
+
+/
 
 ## 6. Criação dos Modelos
 
@@ -523,7 +543,9 @@ Ao construir o Modelo Final apenas com alguns dos filtros fotométricos (`u`, `g
 
 A análise das **Odds Ratios** (OR) extraídas do modelo final revela que as coordenadas astronómicas (alpha e delta), embora estatisticamente significativas devido à elevada dimensão da amostra, apresentam um impacto prático negligenciável na distinção das classes. Em contraste, as características fotométricas assumem o papel principal na classificação. 
 
-Destaca-se o filtro verde (g), cujo aumento de uma unidade na escala normalizada está associado a uma redução do desvio padrão em $1{.}61 \times 10^[-21}$. Por sua vez, o aumento de uma unidade no filtro vermelho (r) aumenta o desvio padrão por aproximadamente $8{.}29 \times 10^{16}$, indicando um aumento extremamente acentuado. Esta dinâmica sugere que os filtros verde e vermelho desempenham um papel relevante na classificação dos objetos celestes.
+Destaca-se o filtro verde (g), cujo aumento de uma unidade na escala normalizada está associado a uma redução praticamente total das odds de um objeto pertencer à classe STAR (OR $\approx 1{,}61 \times 10^{-21}$). Por sua vez, o aumento de uma unidade no filtro vermelho (r) multiplica essas mesmas odds por aproximadamente $8{,}29 \times 10^{16}$, indicando um aumento extremamente acentuado. Esta dinâmica sugere que os filtros verde e vermelho desempenham um papel relevante na classificação dos objetos celestes.
+
+/
 
 ### 6.1 Seleção de variáveis (Método stepwise)
 
@@ -553,6 +575,7 @@ cat("Estatística G (TRV):", TRV, "\nGraus de Liberdade:", gl, "\nValor-p:", p_v
 
 Através do Teste de Razão de Verossimilhança verifica-se que o modelo global é estatisticamento significativo ($p < 0,001$).
 
+/
 
 ## 7. Avaliação das Medidas de Diagnóstico
 
@@ -589,7 +612,9 @@ plot(curva_roc,
 ```
 Como se pode observar no gráfico, o modelo apresenta uma boa capacidade discriminatória, registando um AUC (Area Under the Curve) de $0,807$. Adicionalmente, a análise da curva sugere que o fraco desempenho na Sensibilidade verificado na matriz de confusão pode ser mitigado. O gráfico assinala um ponto ótimo de corte a rondar os $0,401$ (em vez do habitual $0,5$), o qual permitiria um compromisso muito mais equilibrado entre a sensibilidade e a especificidade na classificação das estrelas e galáxias.
 
-Isto significa que reduzindo o limiar para $0,401$ o modelo ficaria muito mais equilibrado, mitigando o facto de existirem muitas mais galáxias do que estrelas.
+Isto significa que reduzindo o limiar para 0.401 o modelo ficaria muito mais equilibrado, mitigando o facto de existirem muitas mais galáxias do que estrelas.
+
+/
 
 ## 8. Verificação das Condições de Aplicabilidade
 ### 8.1 Verificação da linearidade do logit
@@ -652,10 +677,3 @@ Analisando o gráfico referente a cada variável é observável a probabilidade 
 A linha de `u` cresce à medida que este aumenta, ou seja, quanto maior for esta variável maior a chance do objeto ter esta classe.
 
 As variáveis `g` e `r` têm comportamentos contrários uma da outra, ambas apresentado picos, por volta do 20, onde a probabilidade do objeto ter classe *STAR* aumenta ou diminui imensamente.
-
-
-<!-- Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
-
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
-
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed. -->
