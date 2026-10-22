@@ -406,25 +406,15 @@ lapply(data[, c("alpha", "delta", "u", "g", "r", "i", "z", "redshift")],
 
 ### 5.2 Testes comparativos: numérico vs numérico
 
-  Agora, avaliaremos a associação entre atributos numéricos através da correlação de Pearson e a correlação de Spearman.
+  Agora, avaliaremos a associação entre atributos numéricos através da correlação de Spearman.
 
 ```{r, echo=FALSE, warning=FALSE}
 # Matriz de correlação entre variáveis quantitativas
 library(corrplot)
 
-# cálculo da matriz de correlação
-
-M <- cor(data[vars_num])
-corrplot(M, method = "circle")
-
+# cálculo da matriz de correlação - Método de Spearman
 MS<-cor(data[vars_num], method="spearman")
-
 corrplot(MS, method = "circle")
-
-corrplot(M, method = "ellipse", type = "upper")
-
-corrplot(M, method = "number", type = "lower",number.cex = .7, tl.cex = .6)
-
 corrplot.mixed(MS,number.cex = .7,tl.col = "blue", tl.cex = .45)
 ```
 
@@ -564,10 +554,6 @@ OR_final
 
 exp(confint(modelo))
 ```
-
-É então possível retirar algumas conclusões a partir destes resultados. Por exemplo, a variável `u` apresenta um Odds Ratio (OR) de aproximadamente 82,82, o que indica que, por cada unidade de aumento na escala normalizada desta variável, as odds de um objeto pertencer à classe `STAR` aumentam cerca de 8.182,42%, mantendo as restantes variáveis constantes.
-
-A variável `g`, por sua vez, apresenta um OR de aproximadamente 1,61 × 10⁻²¹, um valor extremamente próximo de zero. Isto indica que, por cada unidade de aumento na escala normalizada desta variável, as odds de um objeto pertencer à classe STAR diminuem praticamente 100%, mantendo as restantes variáveis constantes.
 
 ### 6.2 - Teste de Razão de Verossimilhança
 
