@@ -404,7 +404,7 @@ lapply(data[, c("alpha", "delta", "u", "g", "r", "i", "z", "redshift")],
   Assim, `redshift`, `u`, `g` e `r` são as variáveis mais promissoras para distinguir galáxias de estrelas no modelo.
 
 
-### 5.2 Testes comparativos: numérico vs numérico
+### 5.4 Testes comparativos: numérico vs numérico
 
   Agora, avaliaremos a associação entre atributos numéricos através da correlação de Spearman.
 
@@ -518,14 +518,14 @@ A construção dos modelos de regressão logística permitiu confirmar o comport
 
 Por conseguinte, a remoção do redshift (Modelo 4) revelou-se indispensável, estabilizando o algoritmo (5 iterações) com um AIC de 53520 e permitindo avaliar o verdadeiro poder preditivo das variáveis fotométricas. 
 
-Ao construir o Modelo Final apenas com alguns dos filtros fotométricos (`u`, `g` e `r`) verificou-se que todos os preditores são estatisticamente significativos ($p < 0.05$). A estabilidade do modelo é atestada pelas 5 iterações necessárias para a sua convergência e por intervalos de confiança válidos. 
+Ao construir o Modelo Final apenas com alguns dos filtros fotométricos (`u`, `g` e `r`) verificou-se que todos os preditores são estatisticamente significativos ($p < 0,05$). A estabilidade do modelo é atestada pelas 5 iterações necessárias para a sua convergência e por intervalos de confiança válidos. 
 É importante notar a forte semelhança de resultados entre o Modelo Final (composto apenas por delta, u, g, r) e o Modelo 4 (que inclui adicionalmente alpha, i e z). Ambos os modelos convergem rapidamente e apresentam métricas de ajustamento muito próximas. Como o Modelo Final é mais reduzido este será mantido como base de avaliação.
 
 A análise das **Odds Ratios** (OR) extraídas do modelo final revela que as coordenadas astronómicas (alpha e delta), embora estatisticamente significativas devido à elevada dimensão da amostra, apresentam um impacto prático negligenciável na distinção das classes. Em contraste, as características fotométricas assumem o papel principal na classificação. 
 
-Destaca-se o filtro verde (g), cujo aumento de uma unidade na escala normalizada está associado a uma redução praticamente total das odds de um objeto pertencer à classe STAR (OR $\approx 1{,}61 \times 10^{-21}$). Por sua vez, o aumento de uma unidade no filtro vermelho (r) multiplica essas mesmas odds por aproximadamente $8{,}29 \times 10^{16}$, indicando um aumento extremamente acentuado. Esta dinâmica sugere que os filtros verde e vermelho desempenham um papel relevante na classificação dos objetos celestes.
+Destaca-se o filtro verde (g), cujo aumento de uma unidade na escala normalizada está associado a uma redução do desvio padrão em $1{.}61 \times 10^[-21}$. Por sua vez, o aumento de uma unidade no filtro vermelho (r) aumenta o desvio padrão por aproximadamente $8{.}29 \times 10^{16}$, indicando um aumento extremamente acentuado. Esta dinâmica sugere que os filtros verde e vermelho desempenham um papel relevante na classificação dos objetos celestes.
 
-### 6.1 - Seleção de variáveis (Método stepwise)
+### 6.1 Seleção de variáveis (Método stepwise)
 
 Após a construção do modelo logístico inicial, procedeu-se à seleção das variáveis explicativas mais relevantes para a previsão da classe do objeto celeste. O objetivo desta etapa é obter um modelo que explique a variável dependente da melhor forma possível, utilizando o menor número de preditores, evitando assim o sobreajustamento (*overfitting*).
 
@@ -541,21 +541,7 @@ summary(modelo)
 ```
 O facto de o modelo não ter sofrido qualquer alteração explica-se pela elevada relevância estatística de todos os preditores incluídos. Consequentemente, o algoritmo determinou que a remoção de qualquer uma destas variáveis provocaria um aumento do valor do AIC. Assim, o método conclui que o modelo já corresponde à configuração ótima e mais eficiente para a previsão.
 
-Adicionalmente, podemos extrair as *Odds Ratio* para interpretar o impacto de cada preditor.
-
-```{r, warning=FALSE}
-# Extração dos coeficientes do modelo final
-b_final <- coefficients(modelo)
-b_final
-
-# Cálculo das Odds Ratios
-OR_final <- exp(b_final[-1])
-OR_final
-
-exp(confint(modelo))
-```
-
-### 6.2 - Teste de Razão de Verossimilhança
+### 6.2 Teste de Razão de Verossimilhança
 
 ```{r}
 TRV <- modelo$null.deviance - modelo$deviance
@@ -565,12 +551,12 @@ p_value_global <- pchisq(TRV, df = gl, lower.tail = FALSE)
 cat("Estatística G (TRV):", TRV, "\nGraus de Liberdade:", gl, "\nValor-p:", p_value_global)
 ```
 
-Através do Teste de Razão de Verossimilhança verifica-se que o modelo global é estatisticamento significativo (p < 0.001).
+Através do Teste de Razão de Verossimilhança verifica-se que o modelo global é estatisticamento significativo ($p < 0,001$).
 
 
-## 7 - Avaliação das Medidas de Diagnóstico
+## 7. Avaliação das Medidas de Diagnóstico
 
-Após a seleção do modelo final, é fundamental avaliar a sua capacidade preditiva através de métricas de diagnóstico. Para isto, extraíram-se as probabilidades previstas pelo modelo para cada observação. Assumindo um ponto de corte estandardizado de 0.5, as observações com probabilidade superior a 50% foram classificadas como *STAR*, enquanto as restantes foram classificadas como *GALAXY*.
+Após a seleção do modelo final, é fundamental avaliar a sua capacidade preditiva através de métricas de diagnóstico. Para isto, extraíram-se as probabilidades previstas pelo modelo para cada observação. Assumindo um ponto de corte estandardizado de $0,5$, as observações com probabilidade superior a 50% foram classificadas como *STAR*, enquanto as restantes foram classificadas como *GALAXY*.
 
 
 ```{r}
@@ -586,7 +572,7 @@ matriz_confusao <- confusionMatrix(previsoes, test_data$class, positive = "STAR"
 print(matriz_confusao)
 
 ```
-O confronto entre as previsões do modelo e as classes reais das observações é resumido na Matriz de Confusão. Os resultados revelam uma Exatidão (Accuracy) global de 80.78%, o que indica que o modelo classifica corretamente a grande maioria dos objetos celestes. No entanto, a análise detalhada revela um claro desequilíbrio preditivo: o modelo apresenta uma Especificidade muito elevada de 93.88%, demonstrando uma excelente capacidade de identificar corretamente as Galáxias. Em contrapartida, a Sensibilidade é de apenas 44.73%. Isto significa que, utilizando o limiar de 0.5, o algoritmo falha a deteção de mais de metade das estrelas, classificando-as incorretamente como galáxias.
+O confronto entre as previsões do modelo e as classes reais das observações é resumido na Matriz de Confusão. Os resultados revelam uma Exatidão (Accuracy) global de $80,78%$, o que indica que o modelo classifica corretamente a grande maioria dos objetos celestes. No entanto, a análise detalhada revela um claro desequilíbrio preditivo: o modelo apresenta uma Especificidade muito elevada de $93,88%$, demonstrando uma excelente capacidade de identificar corretamente as Galáxias. Em contrapartida, a Sensibilidade é de apenas $44,73%$. Isto significa que, utilizando o limiar de $0,5$, o algoritmo falha a deteção de mais de metade das estrelas, classificando-as incorretamente como galáxias.
 
 Embora a Matriz de Confusão forneça uma avaliação detalhada para um ponto de corte específico, a robustez do modelo deve ser avaliada de forma global. Para tal, recorreu-se à Curva ROC (Receiver Operating Characteristic), que ilustra o compromisso entre a Taxa de Verdadeiros Positivos (Sensibilidade) e a Taxa de Falsos Positivos (Especificidade).
 
@@ -601,9 +587,9 @@ plot(curva_roc,
      legacy.axes = TRUE,
      print.thres = TRUE)
 ```
-Como se pode observar no gráfico, o modelo apresenta uma boa capacidade discriminatória, registando um AUC (Area Under the Curve) de 0.807. Adicionalmente, a análise da curva sugere que o fraco desempenho na Sensibilidade verificado na matriz de confusão pode ser mitigado. O gráfico assinala um ponto ótimo de corte a rondar os 0.401 (em vez do habitual 0.5), o qual permitiria um compromisso muito mais equilibrado entre a sensibilidade e a especificidade na classificação das estrelas e galáxias.
+Como se pode observar no gráfico, o modelo apresenta uma boa capacidade discriminatória, registando um AUC (Area Under the Curve) de $0,807$. Adicionalmente, a análise da curva sugere que o fraco desempenho na Sensibilidade verificado na matriz de confusão pode ser mitigado. O gráfico assinala um ponto ótimo de corte a rondar os $0,401$ (em vez do habitual $0,5$), o qual permitiria um compromisso muito mais equilibrado entre a sensibilidade e a especificidade na classificação das estrelas e galáxias.
 
-Isto significa que reduzindo o limiar para 0.401 o modelo ficaria muito mais equilibrado, mitigando o facto de existirem muitas mais galáxias do que estrelas.
+Isto significa que reduzindo o limiar para $0,401$ o modelo ficaria muito mais equilibrado, mitigando o facto de existirem muitas mais galáxias do que estrelas.
 
 ## 8. Verificação das Condições de Aplicabilidade
 ### 8.1 Verificação da linearidade do logit
